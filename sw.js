@@ -1,10 +1,18 @@
-const CACHE_NAME = "platino-v-final";
-const resources = ["index.html", "manifest.json"];
+const CACHE_NAME = "platino-v1";
+const resources = [
+  "./",
+  "./index.html",
+  "./manifest.json"
+];
 
 self.addEventListener("install", e => {
-  e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(resources)));
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(c => c.addAll(resources))
+  );
 });
 
 self.addEventListener("fetch", e => {
-  e.respondWith(caches.match(e.request).then(res => res || fetch(e.request)));
+  e.respondWith(
+    caches.match(e.request).then(res => res || fetch(e.request))
+  );
 });
