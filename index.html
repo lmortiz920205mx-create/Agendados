@@ -17,8 +17,9 @@
         .header { text-align: center; background: var(--azul); color: white; padding: 10px; border-radius: 0 0 15px 15px; margin: -15px -15px 20px -15px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
         .form-card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; border-top: 4px solid var(--azul); }
         input, select { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        .btn-main { background: var(--azul); color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-excel { background: #1D6F42; margin-top: 10px; }
+        .btn-main { background: var(--azul); color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-bottom: 5px; }
+        .btn-excel { background: #1D6F42; }
+        .btn-clear { background: #555; }
         
         .servicio-card { background: white; margin-bottom: 12px; border-radius: 10px; padding: 15px; border-left: 8px solid; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .pendiente { border-left-color: var(--amarillo); background: #fffde7; }
@@ -52,23 +53,44 @@
         <option value="diario">🔁 Repetir cada 24h</option>
     </select>
     <button class="btn-main" onclick="procesarServicio()" id="btn-save">GUARDAR SERVICIO</button>
-    <button class="btn-main btn-excel" onclick="exportarExcel()">📊 DESCARGAR REPORTE EXCEL</button>
+    <button class="btn-main btn-excel" onclick="exportarExcel()">📊 REPORTE EXCEL</button>
+    <button class="btn-main btn-clear" onclick="borradorRapido()">🧹 LIMPIAR FINALIZADOS</button>
     <button id="btn-cancel" style="display:none; background:none; border:none; color:red; width:100%; margin-top:10px; cursor:pointer;" onclick="cancelarEdicion()">✖ Cancelar Edición</button>
 </div>
 
 <div id="lista"></div>
 
 <script>
-    let servicios = JSON.parse(localStorage.getItem('platino_vfinal')) || [];
+    let db;
+    let servicios = [];
+    const request = indexedDB.open("TaxiPlatinoDB", 1);
 
-    function guardar() {
-        servicios.sort((a, b) => {
-            if (a.estado === 'finalizado' && b.estado !== 'finalizado') return 1;
-            if (a.estado !== 'finalizado' && b.estado === 'finalizado') return -1;
-            return new Date(a.fecha) - new Date(b.fecha);
-        });
-        localStorage.setItem('platino_vfinal', JSON.stringify(servicios));
-        render();
+    request.onupgradeneeded = (e) => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains("servicios")) {
+            db.createObjectStore("servicios", { keyPath: "id" });
+        }
+    };
+
+    request.onsuccess = (e) => {
+        db = e.target.result;
+        cargarDesdeDB();
+    };
+
+    function cargarDesdeDB() {
+        const transaction = db.transaction(["servicios"], "readonly");
+        const store = transaction.objectStore("servicios");
+        const requestGetAll = store.getAll();
+
+        requestGetAll.onsuccess = () => {
+            servicios = requestGetAll.result;
+            servicios.sort((a, b) => {
+                if (a.estado === 'finalizado' && b.estado !== 'finalizado') return 1;
+                if (a.estado !== 'finalizado' && b.estado === 'finalizado') return -1;
+                return new Date(a.fecha) - new Date(b.fecha);
+            });
+            render();
+        };
     }
 
     function procesarServicio() {
@@ -79,25 +101,104 @@
         const fecha = document.getElementById('fecha').value;
         const recurrencia = document.getElementById('recurrencia').value;
 
-        if(!nombre || !domicilio || !fecha || !telefono) return Swal.fire('Atención', 'Por favor llena todos los campos, incluyendo teléfono', 'warning');
-
-        if(id) {
-            const idx = servicios.findIndex(s => s.id == id);
-            servicios[idx] = {...servicios[idx], nombre, telefono, domicilio, fecha, recurrencia};
-            cancelarEdicion();
-            Swal.fire('Actualizado', 'Servicio modificado correctamente', 'success');
-        } else {
-            servicios.push({ id: Date.now(), nombre, telefono, domicilio, fecha, recurrencia, estado: 'pendiente', unidad: 'N/A' });
-            Swal.fire('Agendado', 'Servicio registrado con éxito', 'success');
+        if(!nombre || !domicilio || !fecha || !telefono) {
+            return Swal.fire('Atención', 'Llena todos los campos', 'warning');
         }
-        guardar();
+
+        const datos = {
+            id: id ? parseInt(id) : Date.now(),
+            nombre, telefono, domicilio, fecha, recurrencia,
+            estado: id ? servicios.find(s => s.id == id).estado : 'pendiente',
+            unidad: id ? servicios.find(s => s.id == id).unidad : 'N/A'
+        };
+
+        const transaction = db.transaction(["servicios"], "readwrite");
+        transaction.objectStore("servicios").put(datos);
+        transaction.oncomplete = () => {
+            cancelarEdicion();
+            cargarDesdeDB();
+        };
+    }
+
+    async function asignarUnidad(id) {
+        const { value: unidad } = await Swal.fire({
+            title: 'Asignar Unidad',
+            input: 'text',
+            inputLabel: 'Número de Taxi',
+            confirmButtonColor: '#1a2b4c',
+            showCancelButton: true
+        });
+
+        if (unidad) {
+            const s = servicios.find(x => x.id === id);
+            s.estado = 'proceso';
+            s.unidad = unidad;
+
+            const transaction = db.transaction(["servicios"], "readwrite");
+            transaction.objectStore("servicios").put(s);
+            transaction.oncomplete = () => {
+                const msg = `*TAXI PLATINO:*\nHola *${s.nombre.toUpperCase()}*, su unidad asignada es la *[${unidad}]*.\n📍 Recolección: ${s.domicilio}`;
+                window.open(`https://wa.me/52${s.telefono}?text=${encodeURIComponent(msg)}`);
+                cargarDesdeDB();
+            };
+        }
+    }
+
+    function finalizar(id) {
+        const s = servicios.find(x => x.id === id);
+        const transaction = db.transaction(["servicios"], "readwrite");
+        const store = transaction.objectStore("servicios");
+
+        if(s.recurrencia === 'diario') {
+            const nuevaFecha = new Date(s.fecha);
+            nuevaFecha.setDate(nuevaFecha.getDate() + 1);
+            store.add({ ...s, id: Date.now(), fecha: nuevaFecha.toISOString().slice(0,16), estado: 'pendiente', unidad: 'N/A' });
+        }
+
+        s.estado = 'finalizado';
+        store.put(s);
+        transaction.oncomplete = () => cargarDesdeDB();
+    }
+
+    function eliminar(id) {
+        Swal.fire({ title: '¿Eliminar?', icon: 'warning', showCancelButton: true }).then((res) => {
+            if (res.isConfirmed) {
+                const transaction = db.transaction(["servicios"], "readwrite");
+                transaction.objectStore("servicios").delete(id);
+                transaction.oncomplete = () => cargarDesdeDB();
+            }
+        });
+    }
+
+    function borradorRapido() {
+        const finalizados = servicios.filter(s => s.estado === 'finalizado');
+        if (finalizados.length === 0) return Swal.fire('Info', 'No hay servicios finalizados para limpiar', 'info');
+
+        Swal.fire({
+            title: '¿Limpiar historial?',
+            text: `Se eliminarán ${finalizados.length} servicios finalizados.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#d32f2f',
+            confirmButtonText: 'Sí, limpiar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const transaction = db.transaction(["servicios"], "readwrite");
+                const store = transaction.objectStore("servicios");
+                finalizados.forEach(s => store.delete(s.id));
+                transaction.oncomplete = () => {
+                    Swal.fire('Limpieza exitosa', '', 'success');
+                    cargarDesdeDB();
+                };
+            }
+        });
     }
 
     function editar(id) {
         const s = servicios.find(x => x.id == id);
         document.getElementById('edit-id').value = s.id;
         document.getElementById('nombre').value = s.nombre;
-        document.getElementById('telefono').value = s.telefono || "";
+        document.getElementById('telefono').value = s.telefono;
         document.getElementById('domicilio').value = s.domicilio;
         document.getElementById('fecha').value = s.fecha;
         document.getElementById('recurrencia').value = s.recurrencia;
@@ -119,76 +220,12 @@
         document.getElementById('btn-cancel').style.display = "none";
     }
 
-    async function asignarUnidad(id) {
-        const { value: unidad } = await Swal.fire({
-            title: 'Asignar Unidad',
-            input: 'text',
-            inputLabel: 'Número de Taxi',
-            inputPlaceholder: 'Ej. 1250',
-            showCancelButton: true,
-            confirmButtonColor: '#1a2b4c'
-        });
-
-        if (unidad) {
-            const idx = servicios.findIndex(s => s.id === id);
-            servicios[idx].estado = 'proceso';
-            servicios[idx].unidad = unidad;
-            const s = servicios[idx];
-            
-            const fechaFmt = new Date(s.fecha).toLocaleDateString('es-MX', { weekday:'long', day:'numeric', month:'long' });
-            const horaFmt = new Date(s.fecha).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-
-            const msg = `*TAXI PLATINO INFORMA:*\n\nEstimado(a) *${s.nombre.toUpperCase()}*, le confirmamos que la unidad número *[${unidad}]* ha sido asignada para su servicio.\n\n📅 *Fecha:* ${fechaFmt}\n⏰ *Hora:* ${horaFmt}\n📍 *Ubicación:* ${s.domicilio}\n\n_Tu viaje es nuestra prioridad. Gracias por su preferencia._`;
-            
-            guardar();
-            // Si hay teléfono, envía directo al chat privado, si no, abre WhatsApp general
-            const url = s.telefono ? `https://wa.me/52${s.telefono}?text=${encodeURIComponent(msg)}` : `https://wa.me/?text=${encodeURIComponent(msg)}`;
-            window.open(url);
-        }
-    }
-
-    function finalizar(id) {
-        const idx = servicios.findIndex(s => s.id === id);
-        const s = servicios[idx];
-        if(s.recurrencia === 'diario') {
-            const nuevaFecha = new Date(s.fecha);
-            nuevaFecha.setDate(nuevaFecha.getDate() + 1);
-            servicios.push({ ...s, id: Date.now(), fecha: nuevaFecha.toISOString().slice(0,16), estado: 'pendiente', unidad: 'N/A' });
-        }
-        servicios[idx].estado = 'finalizado';
-        guardar();
-    }
-
-    function eliminar(id) {
-        Swal.fire({
-            title: '¿Eliminar registro?',
-            text: "Esta acción no se puede deshacer",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d32f2f',
-            confirmButtonText: 'Sí, eliminar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                servicios = servicios.filter(s => s.id !== id);
-                guardar();
-            }
-        });
-    }
-
     function exportarExcel() {
-        if(servicios.length === 0) return Swal.fire('Vacío', 'No hay datos para exportar', 'info');
-        const dataParaExcel = servicios.map(s => ({
-            Fecha: s.fecha.replace('T', ' '),
-            Cliente: s.nombre,
-            Teléfono: s.telefono || 'N/A',
-            Domicilio: s.domicilio,
-            Unidad: s.unidad,
-            Estado: s.estado.toUpperCase()
-        }));
-        const ws = XLSX.utils.json_to_sheet(dataParaExcel);
+        if(servicios.length === 0) return;
+        const ws = XLSX.utils.json_to_sheet(servicios);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Servicios");
-        XLSX.writeFile(wb, `Reporte_Taxi_Platino_${new Date().toLocaleDateString()}.xlsx`);
+        XLSX.writeFile(wb, "Reporte_Taxi_Platino.xlsx");
     }
 
     function render() {
@@ -201,12 +238,12 @@
             div.innerHTML = `
                 <span class="time-tag">⏰ ${f.toLocaleDateString()} - ${f.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                 <strong style="font-size:1.1em">${s.nombre}</strong> ${s.recurrencia === 'diario' ? '<span class="recurrente-tag">🔁 Diario</span>' : ''}
-                <div style="font-size:0.9em; color:#666">📞 ${s.telefono || 'Sin tel.'}</div>
+                <div style="font-size:0.9em; color:#666">📞 ${s.telefono}</div>
                 <div style="margin-top:5px; color:#444">📍 ${s.domicilio}</div>
                 <div style="font-size:0.8em; margin-top:5px"><b>Unidad:</b> ${s.unidad}</div>
                 <div class="acciones">
                     <button class="btn-acc bg-ws" onclick="asignarUnidad(${s.id})">Unidad</button>
-                    <button class="btn-acc bg-map" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.domicilio)}')">Maps</button>
+                    <button class="btn-acc bg-map" onclick="window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('${s.domicilio}'))">Maps</button>
                     <button class="btn-acc bg-edit" onclick="editar(${s.id})">Edit</button>
                     ${s.estado !== 'finalizado' ? `<button class="btn-acc bg-fin" onclick="finalizar(${s.id})">Fin</button>` : ''}
                     <button class="btn-acc bg-del" onclick="eliminar(${s.id})">Borrar</button>
@@ -217,9 +254,8 @@
     }
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js').then(() => console.log("SW Registered"));
+        navigator.serviceWorker.register('./sw.js');
     }
-    render();
 </script>
 </body>
 </html>

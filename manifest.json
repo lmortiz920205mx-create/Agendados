@@ -5,19 +5,19 @@
   "display": "standalone",
   "background_color": "#1a2b4c",
   "theme_color": "#1a2b4c",
-  "description": "Panel de Control de Operaciones - Taxi Platino",
+  "description": "Panel de Control Taxi Platino",
   "icons": [
     {
-      "src": "https://i.ibb.co/3ykjXqS/taxi-platino-pwa-icon.png",
+      "src": "./icono.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
-      "src": "https://i.ibb.co/3ykjXqS/taxi-platino-pwa-icon.png",
+      "src": "./icono.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ]
 }

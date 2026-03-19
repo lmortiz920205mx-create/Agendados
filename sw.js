@@ -1,8 +1,9 @@
-const CACHE_NAME = "platino-v1";
+const CACHE_NAME = "platino-v1.1";
 const resources = [
   "./",
   "./index.html",
-  "./manifest.json"
+  "./manifest.json",
+  "./icono.png"
 ];
 
 self.addEventListener("install", e => {
