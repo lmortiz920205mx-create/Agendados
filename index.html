@@ -12,19 +12,32 @@
         :root {
             --azul: #1a2b4c; --plata: #f4f4f4; --rojo: #d32f2f;
             --amarillo: #fbc02d; --verde: #388e3c; --texto: #333;
+            --urgente: #ffcccc; /* Color de fondo para urgentes */
         }
         body { font-family: 'Segoe UI', sans-serif; background: var(--plata); margin: 0; padding: 15px; padding-bottom: 80px; }
         .header { text-align: center; background: var(--azul); color: white; padding: 10px; border-radius: 0 0 15px 15px; margin: -15px -15px 20px -15px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
         .form-card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; border-top: 4px solid var(--azul); }
         input, select { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        .btn-main { background: var(--azul); color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-bottom: 5px; }
+        .btn-main { background: var(--azul); color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-bottom: 5px; display: block;}
         .btn-excel { background: #1D6F42; }
         .btn-clear { background: #555; }
+        .btn-group-ws { background: #25D366; color: white; } /* Color WhatsApp */
         
-        .servicio-card { background: white; margin-bottom: 12px; border-radius: 10px; padding: 15px; border-left: 8px solid; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .servicio-card { background: white; margin-bottom: 12px; border-radius: 10px; padding: 15px; border-left: 8px solid; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: background-color 0.5s; }
         .pendiente { border-left-color: var(--amarillo); background: #fffde7; }
         .en-proceso { border-left-color: var(--verde); background: #f1f8e9; }
         .finalizado { border-left-color: var(--rojo); background: #ffebee; opacity: 0.8; }
+
+        /* Estilo para tarjetas urgentes (menos de 15 min) */
+        .urgente-blink {
+            border-left-color: #ff0000 !important;
+            background-color: var(--urgente) !important;
+            animation: blinker 1.5s linear infinite;
+        }
+
+        @keyframes blinker {
+            50% { opacity: 0.7; }
+        }
 
         .time-tag { font-size: 0.85em; color: #555; font-weight: 700; margin-bottom: 5px; display: block; }
         .recurrente-tag { background: #bbdefb; color: #0d47a1; padding: 2px 8px; border-radius: 10px; font-size: 0.75em; }
@@ -32,9 +45,14 @@
         .acciones { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 12px; }
         .btn-acc { padding: 8px 2px; border: none; border-radius: 6px; color: white; font-size: 9px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
         .bg-ws { background: #25D366; } .bg-map { background: #4285F4; } .bg-edit { background: #607d8b; } .bg-fin { background: var(--rojo); } .bg-del { background: #333; }
+        
+        /* Contenedor de botones de guardado */
+        .save-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
     </style>
 </head>
 <body>
+
+<audio id="audioAlerta" src="alerta.mp3" preload="auto"></audio>
 
 <div class="header">
     <h2 style="margin:5px 0">TAXI PLATINO</h2>
@@ -45,16 +63,24 @@
     <h3 id="form-title" style="margin-top:0; color:var(--azul)">Agendar Servicio</h3>
     <input type="hidden" id="edit-id">
     <input type="text" id="nombre" placeholder="Nombre del Cliente">
-    <input type="tel" id="telefono" placeholder="📱 WhatsApp (10 dígitos)" maxlength="10">
+    <input type="tel" id="telefono" placeholder="📱 WhatsApp Cliente (10 dígitos)" maxlength="10">
     <input type="text" id="domicilio" placeholder="📍 Domicilio de Recolección">
     <input type="datetime-local" id="fecha">
     <select id="recurrencia">
         <option value="no">Servicio Único</option>
         <option value="diario">🔁 Repetir cada 24h</option>
     </select>
-    <button class="btn-main" onclick="procesarServicio()" id="btn-save">GUARDAR SERVICIO</button>
-    <button class="btn-main btn-excel" onclick="exportarExcel()">📊 REPORTE EXCEL</button>
-    <button class="btn-main btn-clear" onclick="borradorRapido()">🧹 LIMPIAR FINALIZADOS</button>
+    
+    <div class="save-buttons">
+        <button class="btn-main" onclick="procesarServicio(false)" id="btn-save">GUARDAR LOCAL</button>
+        <button class="btn-main btn-group-ws" onclick="procesarServicio(true)" id="btn-save-group">GUARDAR Y REPORTAR A GRUPO</button>
+    </div>
+    
+    <div style="margin-top:15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <button class="btn-main btn-excel" onclick="exportarExcel()">📊 REPORTE EXCEL</button>
+        <button class="btn-main btn-clear" onclick="borradorRapido()">🧹 LIMPIAR FINALIZADOS</button>
+    </div>
+    
     <button id="btn-cancel" style="display:none; background:none; border:none; color:red; width:100%; margin-top:10px; cursor:pointer;" onclick="cancelarEdicion()">✖ Cancelar Edición</button>
 </div>
 
@@ -64,6 +90,7 @@
     let db;
     let servicios = [];
     const request = indexedDB.open("TaxiPlatinoDB", 1);
+    const audio = document.getElementById('audioAlerta');
 
     request.onupgradeneeded = (e) => {
         db = e.target.result;
@@ -75,9 +102,12 @@
     request.onsuccess = (e) => {
         db = e.target.result;
         cargarDesdeDB();
+        // Iniciar el chequeo de urgencias cada minuto
+        setInterval(cargarDesdeDB, 60000); 
     };
 
     function cargarDesdeDB() {
+        if(!db) return;
         const transaction = db.transaction(["servicios"], "readonly");
         const store = transaction.objectStore("servicios");
         const requestGetAll = store.getAll();
@@ -93,7 +123,8 @@
         };
     }
 
-    function procesarServicio() {
+    // Modificada para aceptar el parámetro de enviar a grupo
+    function procesarServicio(enviarAGrupo = false) {
         const id = document.getElementById('edit-id').value;
         const nombre = document.getElementById('nombre').value;
         const telefono = document.getElementById('telefono').value;
@@ -101,23 +132,42 @@
         const fecha = document.getElementById('fecha').value;
         const recurrencia = document.getElementById('recurrencia').value;
 
-        if(!nombre || !domicilio || !fecha || !telefono) {
-            return Swal.fire('Atención', 'Llena todos los campos', 'warning');
+        if(!nombre || !domicilio || !fecha) {
+            return Swal.fire('Atención', 'Llena los campos (Teléfono opcional para grupo)', 'warning');
         }
 
         const datos = {
             id: id ? parseInt(id) : Date.now(),
-            nombre, telefono, domicilio, fecha, recurrencia,
+            nombre, telefono: telefono || 'N/A', domicilio, fecha, recurrencia,
             estado: id ? servicios.find(s => s.id == id).estado : 'pendiente',
             unidad: id ? servicios.find(s => s.id == id).unidad : 'N/A'
         };
 
         const transaction = db.transaction(["servicios"], "readwrite");
         transaction.objectStore("servicios").put(datos);
+        
         transaction.oncomplete = () => {
             cancelarEdicion();
             cargarDesdeDB();
+            
+            if(enviarAGrupo) {
+                enviarReporteAGrupo(datos);
+            } else {
+                Swal.fire('Éxito', 'Guardado localmente', 'success');
+            }
         };
+    }
+
+    // Punto 3: Función para enviar el reporte al grupo de WhatsApp
+    function enviarReporteAGrupo(s) {
+        const f = new Date(s.fecha);
+        const fechaFmt = f.toLocaleDateString('es-MX', { weekday:'short', day:'numeric', month:'short' });
+        const horaFmt = f.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        const msg = `*🆕 NUEVO SERVICIO AGENDADO*\n\n👤 *Cliente:* ${s.nombre.toUpperCase()}\n📞 *Tel:* ${s.telefono}\n📅 *Fecha:* ${fechaFmt}\n⏰ *Hora:* ${horaFmt}\n📍 *Recolección:* ${s.domicilio}\n🔁 *Recurrente:* ${s.recurrencia === 'diario' ? 'SÍ' : 'NO'}\n\n_Asignar unidad a la brevedad._`;
+        
+        // Abre WhatsApp general (para seleccionar grupo)
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
     }
 
     async function asignarUnidad(id) {
@@ -138,7 +188,13 @@
             transaction.objectStore("servicios").put(s);
             transaction.oncomplete = () => {
                 const msg = `*TAXI PLATINO:*\nHola *${s.nombre.toUpperCase()}*, su unidad asignada es la *[${unidad}]*.\n📍 Recolección: ${s.domicilio}`;
-                window.open(`https://wa.me/52${s.telefono}?text=${encodeURIComponent(msg)}`);
+                
+                // Intenta enviar directo si hay teléfono, si no abre WhatsApp general
+                if(s.telefono && s.telefono !== 'N/A' && s.telefono.length === 10) {
+                    window.open(`https://wa.me/52${s.telefono}?text=${encodeURIComponent(msg)}`);
+                } else {
+                     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
+                }
                 cargarDesdeDB();
             };
         }
@@ -172,15 +228,14 @@
 
     function borradorRapido() {
         const finalizados = servicios.filter(s => s.estado === 'finalizado');
-        if (finalizados.length === 0) return Swal.fire('Info', 'No hay servicios finalizados para limpiar', 'info');
+        if (finalizados.length === 0) return Swal.fire('Info', 'No hay finalizados', 'info');
 
         Swal.fire({
             title: '¿Limpiar historial?',
-            text: `Se eliminarán ${finalizados.length} servicios finalizados.`,
+            text: `Se borrarán ${finalizados.length} servicios.`,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#d32f2f',
-            confirmButtonText: 'Sí, limpiar'
+            confirmButtonColor: '#d32f2f'
         }).then((result) => {
             if (result.isConfirmed) {
                 const transaction = db.transaction(["servicios"], "readwrite");
@@ -198,12 +253,13 @@
         const s = servicios.find(x => x.id == id);
         document.getElementById('edit-id').value = s.id;
         document.getElementById('nombre').value = s.nombre;
-        document.getElementById('telefono').value = s.telefono;
+        document.getElementById('telefono').value = s.telefono === 'N/A' ? '' : s.telefono;
         document.getElementById('domicilio').value = s.domicilio;
         document.getElementById('fecha').value = s.fecha;
         document.getElementById('recurrencia').value = s.recurrencia;
         document.getElementById('form-title').innerText = "Editando Servicio";
-        document.getElementById('btn-save').innerText = "GUARDAR CAMBIOS";
+        document.getElementById('btn-save').innerText = "ACTUALIZAR LOCAL";
+        document.getElementById('btn-save-group').innerText = "ACTUALIZAR Y REPORTAR";
         document.getElementById('btn-cancel').style.display = "block";
         window.scrollTo({top: 0, behavior: 'smooth'});
     }
@@ -216,7 +272,8 @@
         document.getElementById('fecha').value = "";
         document.getElementById('recurrencia').value = "no";
         document.getElementById('form-title').innerText = "Agendar Servicio";
-        document.getElementById('btn-save').innerText = "GUARDAR SERVICIO";
+        document.getElementById('btn-save').innerText = "GUARDAR LOCAL";
+        document.getElementById('btn-save-group').innerText = "GUARDAR Y REPORTAR A GRUPO";
         document.getElementById('btn-cancel').style.display = "none";
     }
 
@@ -231,10 +288,22 @@
     function render() {
         const lista = document.getElementById('lista');
         lista.innerHTML = '<h3 style="margin-left:10px; color:#555">Hoja de Ruta</h3>';
+        
+        let hayUrgentes = false;
+        const ahora = new Date();
+        const quinceMinutosDespues = new Date(ahora.getTime() + 15 * 60000);
+
         servicios.forEach(s => {
             const f = new Date(s.fecha);
+            
+            // Punto 2: Lógica de Urgencia (Visual)
+            // Es urgente si está pendiente/proceso, es para hoy, y falta menos de 15 min.
+            const esUrgente = (s.estado !== 'finalizado' && f > ahora && f <= quinceMinutosDespues);
+            
+            if(esUrgente) hayUrgentes = true;
+
             const div = document.createElement('div');
-            div.className = `servicio-card ${s.estado}`;
+            div.className = `servicio-card ${s.estado} ${esUrgente ? 'urgente-blink' : ''}`;
             div.innerHTML = `
                 <span class="time-tag">⏰ ${f.toLocaleDateString()} - ${f.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
                 <strong style="font-size:1.1em">${s.nombre}</strong> ${s.recurrencia === 'diario' ? '<span class="recurrente-tag">🔁 Diario</span>' : ''}
@@ -251,6 +320,13 @@
             `;
             lista.appendChild(div);
         });
+
+        // Punto 2: Lógica de Urgencia (Audible)
+        if(hayUrgentes) {
+            // Reproducir sonido. Nota: Los navegadores modernos bloquean el audio automático.
+            // Requiere que el usuario haya interactuado con la página al menos una vez antes.
+            audio.play().catch(e => console.log("Audio bloqueado por navegador hasta interacción: ", e));
+        }
     }
 
     if ('serviceWorker' in navigator) {
