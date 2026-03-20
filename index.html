@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taxi Platino Cloud v2</title>
+    <title>Taxi Platino Cloud v4</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1a2b4c">
     
@@ -15,33 +15,28 @@
     <style>
         :root { --azul: #1a2b4c; --plata: #f4f4f4; --rojo: #d32f2f; --verde: #2e7d32; --amarillo: #fbc02d; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--plata); margin: 0; padding: 15px; padding-bottom: 80px; }
-        .header { text-align: center; background: var(--azul); color: white; padding: 10px; border-radius: 0 0 15px 15px; margin: -15px -15px 20px -15px; }
+        .header { text-align: center; background: var(--azul); color: white; padding: 10px; border-radius: 0 0 15px 15px; margin: -15px -15px 20px -15px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
         .form-card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-top: 4px solid var(--azul); margin-bottom: 20px; }
         input, select { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
         
-        .btn-group-ws { background: #25D366; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; }
-        .btn-tool { padding: 10px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; margin: 5px 2px; flex: 1; }
-        .tools-container { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .btn-group-ws { background: #25D366; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        .tools-container { display: flex; gap: 10px; margin-bottom: 15px; }
+        .btn-tool { flex: 1; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; font-size: 14px; }
         
-        /* Tarjetas y Estados */
+        /* Tarjetas de Servicio */
         .servicio-card { background: white; margin-bottom: 12px; border-radius: 10px; padding: 15px; border-left: 8px solid var(--amarillo); position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .estado-proceso { border-left-color: var(--verde) !important; background-color: #e8f5e9; }
         .estado-finalizado { border-left-color: #777 !important; opacity: 0.6; background-color: #eee; }
         .urgente { border-left-color: var(--rojo) !important; animation: blink 1s infinite; }
         @keyframes blink { 50% { border-left-color: transparent; } }
 
+        .recurrente-tag { background: #e1f5fe; color: #0288d1; padding: 2px 6px; border-radius: 4px; font-size: 0.7em; font-weight: bold; margin-left: 5px; border: 1px solid #b3e5fc; }
         .badge-camino { background: var(--verde); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; margin-top: 8px; display: inline-block; }
         .acciones { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 12px; }
-        .btn-acc { padding: 8px 2px; border: none; border-radius: 6px; color: white; font-size: 9px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        .btn-acc { padding: 10px 2px; border: none; border-radius: 6px; color: white; font-size: 9px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
         
-        /* Colores de botones */
-        .bg-ws { background: var(--verde); } 
-        .bg-map { background: #4285F4; } 
-        .bg-edit { background: #f39c12; }
-        .bg-fin { background: #2c3e50; } 
-        .bg-del { background: var(--rojo); }
-        .bg-excel { background: #1f6e43; }
-        .bg-clear { background: #607d8b; }
+        .bg-ws { background: var(--verde); } .bg-map { background: #4285F4; } 
+        .bg-edit { background: #f39c12; } .bg-fin { background: #2c3e50; } .bg-del { background: var(--rojo); }
     </style>
 </head>
 <body>
@@ -50,12 +45,12 @@
 
 <div class="header">
     <h2>TAXI PLATINO</h2>
-    <small>CENTRAL DE OPERACIONES CLOUD</small>
+    <small>OPERACIONES CLOUD - MINATITLÁN</small>
 </div>
 
 <div class="tools-container">
-    <button class="btn-tool bg-excel" onclick="exportarExcel()">📊 Excel</button>
-    <button class="btn-tool bg-clear" onclick="limpiarFinalizados()">🧹 Limpiar Fin.</button>
+    <button class="btn-tool" style="background: #1f6e43;" onclick="exportarExcel()">📊 EXCEL</button>
+    <button class="btn-tool" style="background: #607d8b;" onclick="limpiarFinalizados()">🧹 LIMPIAR</button>
 </div>
 
 <div class="form-card" id="formulario">
@@ -66,13 +61,20 @@
     <input type="hidden" id="telefono">
     <input type="text" id="domicilio" placeholder="📍 Domicilio de Recolección">
     <input type="datetime-local" id="fecha">
+    
+    <select id="recurrencia">
+        <option value="unico">Servicio Único</option>
+        <option value="diario">🔁 Repetir Diario</option>
+    </select>
+
     <button class="btn-group-ws" onclick="guardarYEnviar()">✅ GUARDAR Y REPORTAR</button>
-    <button id="btn-cancel" style="display:none; background:none; border:none; color:red; width:100%; margin-top:10px;" onclick="cancelarEdicion()">✖ Cancelar Edición</button>
+    <button id="btn-cancel" style="display:none; background:none; border:none; color:red; width:100%; margin-top:10px;" onclick="cancelarEdicion()">✖ Cancelar</button>
 </div>
 
 <div id="lista"></div>
 
 <script>
+    // Configuración Firebase
     const firebaseConfig = { 
         apiKey: "AIzaSyAGBxPgjntYqcDxygmpKU74dnyTZlGs2BU", 
         authDomain: "taxi-platino-52c12.firebaseapp.com", 
@@ -86,37 +88,46 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
+    // Agenda (puedes añadir más aquí)
     const agendaContactos = { "Juan Perez": "9221112233", "Maria Sosa": "9214445566" };
 
     function checarAgenda() {
-        const nombre = document.getElementById('nombre').value;
-        document.getElementById('telefono').value = agendaContactos[nombre] || "N/A";
+        const nom = document.getElementById('nombre').value;
+        document.getElementById('telefono').value = agendaContactos[nom] || "N/A";
     }
 
     function guardarYEnviar() {
-        const id = document.getElementById('edit-id').value || Date.now();
-        const nombre = document.getElementById('nombre').value;
+        const id = document.getElementById('edit-id').value || Date.now().toString();
+        const nom = document.getElementById('nombre').value;
         const tel = document.getElementById('telefono').value;
         const dom = document.getElementById('domicilio').value;
         const fec = document.getElementById('fecha').value;
+        const rec = document.getElementById('recurrencia').value;
 
-        if(!nombre || !dom || !fec) return Swal.fire('Error', 'Completa los campos', 'error');
+        if(!nom || !dom || !fec) return Swal.fire('Error', 'Faltan datos', 'error');
 
-        const datos = { id, nombre, tel, dom, fec, estado: 'pendiente', unidad: 'N/A' };
-        
-        // WhatsApp primero para evitar bloqueo de popup
-        const msg = `*NUEVO:* ${nombre}\n*HORA:* ${fec.split('T')[1]}\n*UBIC:* ${dom}\n*TEL:* ${tel}`;
+        const recMsg = rec === 'diario' ? ' [🔁 RECURRENTE]' : '';
+        const msg = `*NUEVO${recMsg}:* ${nom}\n*HORA:* ${fec.split('T')[1]}\n*UBIC:* ${dom}\n*TEL:* ${tel}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 
-        db.ref('servicios/' + id).set(datos).then(() => cancelarEdicion());
+        db.ref('servicios/' + id).update({
+            id, nombre: nom, tel, dom, fec, recurrencia: rec,
+            estado: 'pendiente', unidad: 'N/A'
+        }).then(() => cancelarEdicion());
     }
 
-    db.ref('servicios').on('value', (snapshot) => render(snapshot.val()));
+    db.ref('servicios').on('value', (snapshot) => {
+        render(snapshot.val());
+    });
 
     function render(data) {
         const lista = document.getElementById('lista');
         lista.innerHTML = '<h3 style="margin-left:10px; color:#555">Hoja de Ruta</h3>';
-        if(!data) return;
+        
+        if(!data) {
+            lista.innerHTML += '<p style="text-align:center; color:gray">No hay servicios.</p>';
+            return;
+        }
 
         const ahora = new Date();
         const prox15 = new Date(ahora.getTime() + 15 * 60000);
@@ -124,25 +135,27 @@
         Object.values(data).sort((a,b) => new Date(a.fec) - new Date(b.fec)).forEach(s => {
             const f = new Date(s.fec);
             const esProceso = s.estado === 'proceso';
-            const esFinalizado = s.estado === 'finalizado';
+            const esFin = s.estado === 'finalizado';
             const esUrgente = s.estado === 'pendiente' && f <= prox15 && f > ahora;
             
             if(esUrgente) document.getElementById('alertaSonido').play().catch(()=>{});
 
             const div = document.createElement('div');
-            div.className = `servicio-card ${esProceso ? 'estado-proceso' : ''} ${esFinalizado ? 'estado-finalizado' : ''} ${esUrgente ? 'urgente' : ''}`;
+            div.className = `servicio-card ${esProceso ? 'estado-proceso' : ''} ${esFin ? 'estado-finalizado' : ''} ${esUrgente ? 'urgente' : ''}`;
             
             div.innerHTML = `
-                <small>⏰ ${f.toLocaleString()}</small><br>
-                <strong>${s.nombre}</strong>
-                <div style="font-size:0.9em">📍 ${s.dom}</div>
+                <small>⏰ ${f.toLocaleDateString()} - ${f.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</small>
+                ${s.recurrencia === 'diario' ? '<span class="recurrente-tag">🔁 Diario</span>' : ''}
+                <br>
+                <strong style="font-size:1.1em">${s.nombre}</strong>
+                <div style="color:#444">📍 ${s.dom}</div>
                 ${esProceso ? `<div class="badge-camino">🚖 EN CAMINO: ${s.unidad}</div>` : `<div>🚕 Unidad: ${s.unidad}</div>`}
                 
                 <div class="acciones">
                     <button class="btn-acc bg-ws" onclick="asignarUnidad('${s.id}')">Unidad</button>
-                    <button class="btn-acc bg-map" onclick="window.open('https://www.google.com/maps/search/${encodeURIComponent(s.dom)}')">Mapa</button>
+                    <button class="btn-acc bg-map" onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.dom)}')">Mapa</button>
                     <button class="btn-acc bg-edit" onclick="editar('${s.id}')">Edit</button>
-                    <button class="btn-acc bg-fin" onclick="finalizar('${s.id}')">Fin</button>
+                    <button class="btn-acc bg-fin" onclick="finalizarServicio('${s.id}')">Fin</button>
                     <button class="btn-acc bg-del" onclick="eliminar('${s.id}')">X</button>
                 </div>
             `;
@@ -150,10 +163,38 @@
         });
     }
 
-    // --- FUNCIONES DE BOTONES RESTAURADAS ---
     function asignarUnidad(id) {
-        Swal.fire({ title: 'Asignar Taxi', input: 'text', confirmButtonColor: '#1a2b4c', showCancelButton: true }).then(res => {
+        Swal.fire({ title: 'Número de Taxi', input: 'text', showCancelButton: true }).then(res => {
             if(res.value) db.ref('servicios/' + id).update({ unidad: res.value, estado: 'proceso' });
+        });
+    }
+
+    // LOGICA DE RECURRENCIA AL FINALIZAR
+    function finalizarServicio(id) {
+        db.ref('servicios/' + id).once('value', (snap) => {
+            const s = snap.val();
+            
+            // Si es recurrente, creamos el del día siguiente
+            if(s.recurrencia === 'diario') {
+                const fechaActual = new Date(s.fec);
+                fechaActual.setDate(fechaActual.getDate() + 1); // Sumar 1 día
+                
+                const nuevaId = Date.now().toString();
+                const nuevaFecha = fechaActual.toISOString().slice(0, 16); // Formato YYYY-MM-DDTHH:mm
+
+                db.ref('servicios/' + nuevaId).set({
+                    ...s,
+                    id: nuevaId,
+                    fec: nuevaFecha,
+                    estado: 'pendiente',
+                    unidad: 'N/A'
+                });
+                
+                Swal.fire('Recurrencia', 'Servicio finalizado. Se agendó automáticamente para mañana.', 'info');
+            }
+            
+            // Marcar el actual como finalizado
+            db.ref('servicios/' + id).update({ estado: 'finalizado' });
         });
     }
 
@@ -164,15 +205,15 @@
             document.getElementById('nombre').value = s.nombre;
             document.getElementById('domicilio').value = s.dom;
             document.getElementById('fecha').value = s.fec;
+            document.getElementById('recurrencia').value = s.recurrencia || 'unico';
             document.getElementById('form-title').innerText = "Editando Servicio";
             document.getElementById('btn-cancel').style.display = "block";
             window.scrollTo(0,0);
         });
     }
 
-    function finalizar(id) { db.ref('servicios/' + id).update({ estado: 'finalizado' }); }
-    function eliminar(id) { 
-        Swal.fire({ title: '¿Eliminar?', icon: 'warning', showCancelButton: true }).then(r => {
+    function eliminar(id) {
+        Swal.fire({ title: '¿Eliminar?', showCancelButton: true }).then(r => {
             if(r.isConfirmed) db.ref('servicios/' + id).remove();
         });
     }
@@ -180,10 +221,10 @@
     function limpiarFinalizados() {
         db.ref('servicios').once('value', (snap) => {
             const data = snap.val();
+            if(!data) return;
             Object.values(data).forEach(s => {
                 if(s.estado === 'finalizado') db.ref('servicios/' + s.id).remove();
             });
-            Swal.fire('Limpieza', 'Servicios finalizados eliminados', 'success');
         });
     }
 
@@ -193,6 +234,23 @@
             const ws = XLSX.utils.json_to_sheet(data);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Servicios");
+            XLSX.writeFile(wb, "Reporte_Taxi_Platino.xlsx");
+        });
+    }
+
+    function cancelarEdicion() {
+        document.getElementById('edit-id').value = "";
+        document.getElementById('nombre').value = "";
+        document.getElementById('domicilio').value = "";
+        document.getElementById('fecha').value = "";
+        document.getElementById('recurrencia').value = "unico";
+        document.getElementById('form-title').innerText = "Agendar Servicio";
+        document.getElementById('btn-cancel').style.display = "none";
+    }
+</script>
+</body>
+</html>
+(wb, ws, "Servicios");
             XLSX.writeFile(wb, `Reporte_Taxi_Platino_${new Date().toLocaleDateString()}.xlsx`);
         });
     }
