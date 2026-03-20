@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Taxi Platino Admin</title>
 
 <link rel="manifest" href="manifest.json">
@@ -11,22 +12,103 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <style>
-body { font-family: Arial; background:#f4f4f4; margin:0; padding:15px; }
-.btn-main { background:#1a2b4c; color:white; padding:12px; width:100%; border:none; border-radius:8px; margin-top:5px; }
-.servicio-card { background:white; padding:10px; margin:10px 0; border-left:5px solid #1a2b4c; }
+:root{
+    --azul:#1a2b4c;
+    --verde:#2e7d32;
+    --rojo:#c62828;
+    --amarillo:#f9a825;
+}
+
+body{
+    font-family: 'Segoe UI', sans-serif;
+    background:#f4f6f9;
+    margin:0;
+    padding:15px;
+}
+
+/* HEADER */
+.header{
+    background:var(--azul);
+    color:white;
+    text-align:center;
+    padding:15px;
+    border-radius:0 0 15px 15px;
+    margin:-15px -15px 15px -15px;
+}
+
+/* FORM */
+.card{
+    background:white;
+    padding:15px;
+    border-radius:12px;
+    margin-bottom:15px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+input{
+    width:100%;
+    padding:12px;
+    margin:5px 0;
+    border-radius:8px;
+    border:1px solid #ddd;
+}
+
+/* BOTONES */
+.btn{
+    width:100%;
+    padding:12px;
+    border:none;
+    border-radius:8px;
+    margin-top:5px;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.btn-main{ background:var(--azul); color:white; }
+.btn-green{ background:var(--verde); color:white; }
+.btn-red{ background:var(--rojo); color:white; }
+.btn-yellow{ background:var(--amarillo); }
+
+/* LISTA */
+.servicio{
+    background:white;
+    padding:12px;
+    border-radius:10px;
+    margin-bottom:10px;
+    border-left:6px solid;
+    box-shadow:0 2px 5px rgba(0,0,0,0.05);
+}
+
+.pendiente{ border-color:var(--amarillo); }
+.proceso{ border-color:var(--verde); }
+.finalizado{ border-color:var(--rojo); opacity:0.7; }
+
+.acciones{
+    display:grid;
+    grid-template-columns: repeat(3,1fr);
+    gap:5px;
+    margin-top:10px;
+}
+
+small{ color:#666; }
 </style>
 </head>
 
 <body>
 
-<h2>TAXI PLATINO</h2>
+<div class="header">
+    <h2>TAXI PLATINO</h2>
+    <small>Panel de Operaciones</small>
+</div>
 
-<input id="nombre" placeholder="Nombre">
-<input id="telefono" placeholder="Teléfono">
-<input id="domicilio" placeholder="Domicilio">
-<input type="datetime-local" id="fecha">
+<div class="card">
+    <input id="nombre" placeholder="👤 Cliente">
+    <input id="telefono" placeholder="📱 Teléfono">
+    <input id="domicilio" placeholder="📍 Dirección">
+    <input type="datetime-local" id="fecha">
 
-<button class="btn-main" onclick="procesarServicio()">GUARDAR</button>
+    <button class="btn btn-main" onclick="procesarServicio()">💾 Guardar Servicio</button>
+</div>
 
 <div id="lista"></div>
 
@@ -52,55 +134,51 @@ const serviciosRef = collection(db, "servicios");
 let servicios = [];
 
 // 🔄 TIEMPO REAL
-onSnapshot(serviciosRef, (snapshot) => {
+onSnapshot(serviciosRef, (snapshot)=>{
     servicios = [];
-    snapshot.forEach(docSnap => {
+    snapshot.forEach(docSnap=>{
         servicios.push({
             id: docSnap.id,
             ...docSnap.data()
         });
     });
+
+    // ordenar por fecha
+    servicios.sort((a,b)=> new Date(a.fecha) - new Date(b.fecha));
+
     render();
 });
 
 // 💾 GUARDAR
-window.procesarServicio = async function() {
-
-    const nombre = document.getElementById('nombre').value;
-    const telefono = document.getElementById('telefono').value;
-    const domicilio = document.getElementById('domicilio').value;
-    const fecha = document.getElementById('fecha').value;
+window.procesarServicio = async ()=>{
+    const nombre = nombreInput.value;
+    const telefono = telefonoInput.value;
+    const domicilio = domicilioInput.value;
+    const fecha = fechaInput.value;
 
     if(!nombre || !domicilio || !fecha){
         return Swal.fire('Faltan datos');
     }
 
-    await addDoc(serviciosRef, {
+    await addDoc(serviciosRef,{
         nombre,
         telefono,
         domicilio,
         fecha,
-        estado: 'pendiente',
-        unidad: 'N/A'
+        estado:'pendiente',
+        unidad:'N/A'
     });
 
-    document.getElementById('nombre').value = "";
-    document.getElementById('telefono').value = "";
-    document.getElementById('domicilio').value = "";
-    document.getElementById('fecha').value = "";
+    nombreInput.value="";
+    telefonoInput.value="";
+    domicilioInput.value="";
+    fechaInput.value="";
 };
 
-// ✏️ FINALIZAR
-window.finalizar = async function(id){
-    await updateDoc(doc(db,"servicios",id),{
-        estado:'finalizado'
-    });
-};
-
-// 🚕 ASIGNAR UNIDAD
-window.asignar = async function(id){
+// 🚕 UNIDAD
+window.asignar = async(id)=>{
     const { value } = await Swal.fire({
-        title:"Unidad",
+        title:"Asignar unidad",
         input:"text"
     });
 
@@ -112,30 +190,41 @@ window.asignar = async function(id){
     }
 };
 
-// 🗑 ELIMINAR
-window.eliminar = async function(id){
-    await deleteDoc(doc(db,"servicios",id));
+// ✅ FINALIZAR
+window.finalizar = async(id)=>{
+    await updateDoc(doc(db,"servicios",id),{
+        estado:"finalizado"
+    });
+};
+
+// ❌ ELIMINAR
+window.eliminar = async(id)=>{
+    const res = await Swal.fire({title:"¿Eliminar?", showCancelButton:true});
+    if(res.isConfirmed){
+        await deleteDoc(doc(db,"servicios",id));
+    }
 };
 
 // 🎨 RENDER
 function render(){
-    const lista = document.getElementById('lista');
-    lista.innerHTML = "";
+    lista.innerHTML="";
 
     servicios.forEach(s=>{
-        const div = document.createElement('div');
-        div.className = "servicio-card";
+        const div=document.createElement("div");
 
-        div.innerHTML = `
+        div.className=`servicio ${s.estado}`;
+
+        div.innerHTML=`
             <b>${s.nombre}</b><br>
-            ${s.domicilio}<br>
-            ${s.fecha}<br>
-            Estado: ${s.estado}<br>
-            Unidad: ${s.unidad}<br><br>
+            <small>📍 ${s.domicilio}</small><br>
+            <small>📅 ${new Date(s.fecha).toLocaleString()}</small><br>
+            <small>🚕 ${s.unidad}</small>
 
-            <button onclick="asignar('${s.id}')">Unidad</button>
-            <button onclick="finalizar('${s.id}')">Finalizar</button>
-            <button onclick="eliminar('${s.id}')">Eliminar</button>
+            <div class="acciones">
+                <button class="btn btn-green" onclick="asignar('${s.id}')">Unidad</button>
+                <button class="btn btn-yellow" onclick="finalizar('${s.id}')">Finalizar</button>
+                <button class="btn btn-red" onclick="eliminar('${s.id}')">Eliminar</button>
+            </div>
         `;
 
         lista.appendChild(div);
