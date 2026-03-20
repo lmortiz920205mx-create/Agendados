@@ -89,7 +89,7 @@
         if(!nom || !dom || !fec) return Swal.fire('Error', 'Faltan datos', 'error');
 
         const msg = `*NUEVO:* ${nom}\n*HORA:* ${fec.split('T')[1]}\n*UBIC:* ${dom}`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+        window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
 
         db.ref('servicios/' + id).update({
             id, nombre: nom, dom, fec, recurrencia: rec,
@@ -115,14 +115,14 @@
             if(esUrgente) document.getElementById('alertaSonido').play().catch(()=>{});
 
             const div = document.createElement('div');
-            div.className = `servicio-card ${esProceso ? 'estado-proceso' : ''} ${esFin ? 'estado-finalizado' : ''} ${esUrgente ? 'urgente' : ''}`;
+            div.className = "servicio-card " + (esProceso ? "estado-proceso " : "") + (esFin ? "estado-finalizado " : "") + (esUrgente ? "urgente" : "");
             div.innerHTML = `
                 <small>⏰ ${f.toLocaleString()}</small><br>
                 <strong>${s.nombre}</strong> ${s.recurrencia === 'diario' ? '🔁' : ''}
                 <div>📍 ${s.dom}</div>
                 <div class="acciones">
                     <button class="btn-acc bg-ws" onclick="asignarUnidad('${s.id}')">Taxi</button>
-                    <button class="btn-acc bg-map" onclick="window.open('https://www.google.com/maps/search/'+encodeURIComponent('${s.dom}'))">Mapa</button>
+                    <button class="btn-acc bg-map" onclick="window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('${s.dom}'))">Mapa</button>
                     <button class="btn-acc bg-edit" onclick="editar('${s.id}')">Edit</button>
                     <button class="btn-acc bg-fin" onclick="finalizarServicio('${s.id}')">Fin</button>
                     <button class="btn-acc bg-del" onclick="eliminar('${s.id}')">X</button>
@@ -160,6 +160,7 @@
             document.getElementById('fecha').value = s.fec;
             document.getElementById('form-title').innerText = "Editando...";
             document.getElementById('btn-cancel').style.display = "block";
+            window.scrollTo(0,0);
         });
     }
 
