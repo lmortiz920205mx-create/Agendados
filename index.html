@@ -1,225 +1,109 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taxi Platino Cloud v5</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#1a2b4c">
-    
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
-    <style>
-        :root { --azul: #1a2b4c; --plata: #f4f4f4; --rojo: #d32f2f; --verde: #2e7d32; --amarillo: #fbc02d; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--plata); margin: 0; padding: 15px; padding-bottom: 80px; }
-        .header { text-align: center; background: var(--azul); color: white; padding: 10px; border-radius: 0 0 15px 15px; margin: -15px -15px 20px -15px; }
-        .form-card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-top: 4px solid var(--azul); margin-bottom: 20px; }
-        input, select { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        
-        .btn-group-ws { background: #25D366; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; }
-        .tools-container { display: flex; gap: 10px; margin-bottom: 15px; }
-        .btn-tool { flex: 1; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; }
-        
-        .servicio-card { background: white; margin-bottom: 12px; border-radius: 10px; padding: 15px; border-left: 8px solid var(--amarillo); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .estado-proceso { border-left-color: var(--verde) !important; background-color: #e8f5e9; }
-        .estado-finalizado { border-left-color: #777 !important; opacity: 0.6; background-color: #eee; }
-        .urgente { border-left-color: var(--rojo) !important; animation: blink 1s infinite; }
-        @keyframes blink { 50% { border-left-color: transparent; } }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taxi Platino Cloud v5</title>
 
-        .acciones { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 12px; }
-        .btn-acc { padding: 10px 2px; border: none; border-radius: 6px; color: white; font-size: 9px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
-        .bg-ws { background: var(--verde); } .bg-map { background: #4285F4; } 
-        .bg-edit { background: #f39c12; } .bg-fin { background: #2c3e50; } .bg-del { background: var(--rojo); }
-    </style>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<style>
+body { font-family: sans-serif; background:#f4f4f4; padding:10px; }
+.form { background:#fff; padding:10px; border-radius:10px; margin-bottom:15px; }
+input, select, button { width:100%; margin:5px 0; padding:10px; }
+.card { background:#fff; padding:10px; border-left:5px solid orange; margin-bottom:10px; border-radius:8px;}
+</style>
 </head>
+
 <body>
 
-<audio id="alertaSonido" src="alerta.mp3" preload="auto"></audio>
-
-<div class="header">
-    <h2>TAXI PLATINO</h2>
-    <small>OPERACIONES CLOUD - MINATITLÁN</small>
-</div>
-
-<div class="tools-container">
-    <button class="btn-tool" style="background: #1f6e43;" onclick="exportarExcel()">📊 EXCEL</button>
-    <button class="btn-tool" style="background: #607d8b;" onclick="limpiarFinalizados()">🧹 LIMPIAR</button>
-</div>
-
-<div class="form-card" id="formulario">
-    <h3 id="form-title" style="margin:0 0 10px 0; color:var(--azul)">Agendar Servicio</h3>
-    <input type="hidden" id="edit-id">
-    <input id="nombre" placeholder="Nombre del Cliente">
-    <input type="text" id="domicilio" placeholder="📍 Domicilio de Recolección">
-    <input type="datetime-local" id="fecha">
-    <select id="recurrencia">
-        <option value="unico">Servicio Único</option>
-        <option value="diario">🔁 Repetir Diario</option>
-    </select>
-    <button class="btn-group-ws" onclick="guardarYEnviar()">✅ GUARDAR Y REPORTAR</button>
-    <button id="btn-cancel" style="display:none; color:red; width:100%; border:none; background:none; margin-top:10px;" onclick="cancelarEdicion()">✖ Cancelar</button>
+<div class="form">
+<input id="nombre" placeholder="Nombre">
+<input id="domicilio" placeholder="Domicilio">
+<input type="datetime-local" id="fecha">
+<select id="recurrencia">
+<option value="unico">Único</option>
+<option value="diario">Diario</option>
+</select>
+<button onclick="guardar()">Guardar</button>
 </div>
 
 <div id="lista"></div>
 
 <script>
-    const firebaseConfig = { 
-        apiKey: "AIzaSyAGBxPgjntYqcDxygmpKU74dnyTZlGs2BU", 
-        authDomain: "taxi-platino-52c12.firebaseapp.com", 
-        databaseURL: "https://taxi-platino-52c12-default-rtdb.firebaseio.com",
-        projectId: "taxi-platino-52c12", 
-        storageBucket: "taxi-platino-52c12.firebasestorage.app", 
-        messagingSenderId: "85770716077", 
-        appId: "1:85770716077:web:79751d566d4094b6f35724"
-    };
-    
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+const firebaseConfig = { 
+apiKey: "TU_API_KEY",
+authDomain: "TU_AUTH_DOMAIN",
+databaseURL: "TU_DATABASE_URL",
+projectId: "TU_PROJECT_ID"
+};
 
-    function guardarYEnviar() {
-        const id = document.getElementById('edit-id').value || Date.now().toString();
-        const nom = document.getElementById('nombre').value;
-        const dom = document.getElementById('domicilio').value;
-        const fec = document.getElementById('fecha').value;
-        const rec = document.getElementById('recurrencia').value;
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-        if(!nom || !dom || !fec) return Swal.fire('Error', 'Faltan datos', 'error');
+function guardar() {
+    const id = Date.now().toString();
+    const nom = nombre.value;
+    const dom = domicilio.value;
+    const fec = fecha.value;
+    const rec = recurrencia.value;
 
-        const msg = `*NUEVO:* ${nom}\n*HORA:* ${fec.split('T')[1]}\n*UBIC:* ${dom}`;
+    if(!nom || !dom || !fec){
+        Swal.fire("Error","Faltan datos","error");
+        return;
+    }
+
+    const msg = `NUEVO\n${nom}\n${fec}\n${dom}`;
+
+    db.ref('servicios/' + id).set({
+        id,
+        nombre: nom,
+        dom,
+        fec,
+        recurrencia: rec,
+        estado: 'pendiente'
+    })
+    .then(() => {
         window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
-
-        db.ref('servicios/' + id).update({
-            id, nombre: nom, dom, fec, recurrencia: rec,
-            estado: 'pendiente', unidad: 'N/A'
-        }).then(() => cancelarEdicion());
-    }
-
-    db.ref('servicios').on('value', (snap) => {
-        const lista = document.getElementById('lista');
-        lista.innerHTML = '<h3 style="margin-left:10px; color:#555">Hoja de Ruta</h3>';
-        
-        const data = snap.val();
-        if (!data) {
-            lista.innerHTML += '<p style="text-align:center; color:gray">No hay servicios registrados.</p>';
-            return;
-        }
-
-        const ahora = new Date();
-        const prox15 = new Date(ahora.getTime() + 15 * 60000);
-
-        Object.keys(data).map(key => data[key])
-        .sort((a,b) => new Date(a.fec) - new Date(b.fec))
-        .forEach(s => {
-            const f = new Date(s.fec);
-            const esProceso = s.estado === 'proceso';
-            const esFin = s.estado === 'finalizado';
-            const esUrgente = s.estado === 'pendiente' && f <= prox15 && f > ahora;
-            
-            if(esUrgente) {
-                const audio = document.getElementById('alertaSonido');
-                if(audio) audio.play().catch(() => console.log("Audio en espera"));
-            }
-
-            const div = document.createElement('div');
-            div.className = "servicio-card " + (esProceso ? "estado-proceso " : "") + (esFin ? "estado-finalizado " : "") + (esUrgente ? "urgente" : "");
-            
-            // Corrección de URL de Mapas para evitar errores de codificación
-            const mapUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(s.dom);
-
-            div.innerHTML = `
-                <small>⏰ ${f.toLocaleString()}</small><br>
-                <strong>${s.nombre}</strong> ${s.recurrencia === 'diario' ? '🔁' : ''}
-                <div>📍 ${s.dom}</div>
-                <div style="font-size: 0.8em; margin-top: 5px;">🚕 Unidad: ${s.unidad || 'N/A'}</div>
-                <div class="acciones">
-                    <button class="btn-acc bg-ws" onclick="asignarUnidad('${s.id}')">Taxi</button>
-                    <button class="btn-acc bg-map" onclick="window.open('${mapUrl}')">Mapa</button>
-                    <button class="btn-acc bg-edit" onclick="editar('${s.id}')">Edit</button>
-                    <button class="btn-acc bg-fin" onclick="finalizarServicio('${s.id}')">Fin</button>
-                    <button class="btn-acc bg-del" onclick="eliminar('${s.id}')">X</button>
-                </div>
-            `;
-            lista.appendChild(div);
-        });
+        limpiar();
+    })
+    .catch(err => {
+        console.error(err);
+        Swal.fire("Error","No se guardó","error");
     });
+}
 
-    function asignarUnidad(id) {
-        Swal.fire({ title: 'Asignar Unidad', input: 'text', showCancelButton: true }).then(res => {
-            if(res.value) db.ref('servicios/' + id).update({ unidad: res.value, estado: 'proceso' });
-        });
+db.ref('servicios').on('value', snap => {
+    const data = snap.val();
+    console.log("DATA:", data);
+
+    lista.innerHTML = "";
+
+    if(!data){
+        lista.innerHTML = "<p>No hay servicios</p>";
+        return;
     }
 
-    function finalizarServicio(id) {
-        db.ref('servicios/' + id).once('value', (snap) => {
-            const s = snap.val();
-            if(s.recurrencia === 'diario') {
-                const f = new Date(s.fec);
-                f.setDate(f.getDate() + 1);
-                const nuevaId = Date.now().toString();
-                db.ref('servicios/' + nuevaId).set({ 
-                    ...s, 
-                    id: nuevaId, 
-                    fec: f.toISOString().slice(0,16), 
-                    estado: 'pendiente',
-                    unidad: 'N/A' 
-                });
-            }
-            db.ref('servicios/' + id).update({ estado: 'finalizado' });
-        });
-    }
+    Object.values(data).forEach(s => {
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+            <b>${s.nombre}</b><br>
+            ${s.dom}<br>
+            ${s.fec}
+        `;
+        lista.appendChild(div);
+    });
+});
 
-    function editar(id) {
-        db.ref('servicios/' + id).once('value', (snap) => {
-            const s = snap.val();
-            document.getElementById('edit-id').value = s.id;
-            document.getElementById('nombre').value = s.nombre;
-            document.getElementById('domicilio').value = s.dom;
-            document.getElementById('fecha').value = s.fec;
-            document.getElementById('recurrencia').value = s.recurrencia || 'unico';
-            document.getElementById('form-title').innerText = "Editando...";
-            document.getElementById('btn-cancel').style.display = "block";
-            window.scrollTo(0,0);
-        });
-    }
-
-    function eliminar(id) {
-        Swal.fire({ title: '¿Eliminar?', showCancelButton: true }).then(r => {
-            if(r.isConfirmed) db.ref('servicios/' + id).remove();
-        });
-    }
-
-    function limpiarFinalizados() {
-        db.ref('servicios').once('value', (snap) => {
-            const data = snap.val();
-            if(!data) return;
-            for(let key in data) if(data[key].estado === 'finalizado') db.ref('servicios/' + key).remove();
-            Swal.fire('Limpieza', 'Servicios finalizados eliminados', 'success');
-        });
-    }
-
-    function exportarExcel() {
-        db.ref('servicios').once('value', (snap) => {
-            const data = snap.val();
-            if(!data) return Swal.fire('Error', 'No hay datos para exportar', 'error');
-            const ws = XLSX.utils.json_to_sheet(Object.values(data));
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Servicios");
-            XLSX.writeFile(wb, "Reporte_Taxi_Platino.xlsx");
-        });
-    }
-
-    function cancelarEdicion() {
-        document.getElementById('edit-id').value = "";
-        document.getElementById('nombre').value = "";
-        document.getElementById('domicilio').value = "";
-        document.getElementById('fecha').value = "";
-        document.getElementById('recurrencia').value = "unico";
-        document.getElementById('form-title').innerText = "Agendar Servicio";
-        document.getElementById('btn-cancel').style.display = "none";
-    }
+function limpiar(){
+    nombre.value="";
+    domicilio.value="";
+    fecha.value="";
+}
 </script>
+
 </body>
 </html>
