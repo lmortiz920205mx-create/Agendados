@@ -1,201 +1,337 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Taxi Platino Admin</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taxi Platino Admin</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a2b4c">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --azul: #1a2b4c; --plata: #f4f4f4; --rojo: #d32f2f;
+            --amarillo: #fbc02d; --verde: #388e3c; --texto: #333;
+            --urgente: #ffcccc; /* Color de fondo para urgentes */
+        }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--plata); margin: 0; padding: 15px; padding-bottom: 80px; }
+        .header { text-align: center; background: var(--azul); color: white; padding: 10px; border-radius: 0 0 15px 15px; margin: -15px -15px 20px -15px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .form-card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; border-top: 4px solid var(--azul); }
+        input, select { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        .btn-main { background: var(--azul); color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; margin-bottom: 5px; display: block;}
+        .btn-excel { background: #1D6F42; }
+        .btn-clear { background: #555; }
+        .btn-group-ws { background: #25D366; color: white; } /* Color WhatsApp */
+        
+        .servicio-card { background: white; margin-bottom: 12px; border-radius: 10px; padding: 15px; border-left: 8px solid; position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: background-color 0.5s; }
+        .pendiente { border-left-color: var(--amarillo); background: #fffde7; }
+        .en-proceso { border-left-color: var(--verde); background: #f1f8e9; }
+        .finalizado { border-left-color: var(--rojo); background: #ffebee; opacity: 0.8; }
 
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1a2b4c">
+        /* Estilo para tarjetas urgentes (menos de 15 min) */
+        .urgente-blink {
+            border-left-color: #ff0000 !important;
+            background-color: var(--urgente) !important;
+            animation: blinker 1.5s linear infinite;
+        }
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+        @keyframes blinker {
+            50% { opacity: 0.7; }
+        }
 
-<style>
-:root {
---azul:#1a2b4c; --plata:#f4f4f4; --rojo:#d32f2f;
---amarillo:#fbc02d; --verde:#388e3c; --urgente:#ffcccc;
-}
-
-body {font-family:'Segoe UI';background:var(--plata);margin:0;padding:15px;padding-bottom:80px}
-.header {text-align:center;background:var(--azul);color:#fff;padding:10px;border-radius:0 0 15px 15px;margin:-15px -15px 20px}
-
-.form-card {background:#fff;padding:15px;border-radius:12px;margin-bottom:20px}
-
-input,select {width:100%;padding:12px;margin:6px 0;border-radius:8px}
-
-.btn {background:var(--azul);color:#fff;padding:12px;border:none;border-radius:8px;width:100%;margin-bottom:5px}
-.ws {background:#25D366}
-
-.servicio-card {background:#fff;margin-bottom:10px;padding:12px;border-left:6px solid}
-.pendiente{border-color:var(--amarillo)}
-.en-proceso{border-color:var(--verde)}
-.finalizado{border-color:var(--rojo);opacity:.7}
-
-.urgente{background:var(--urgente);animation:blink 1.5s infinite}
-@keyframes blink{50%{opacity:.7}}
-</style>
+        .time-tag { font-size: 0.85em; color: #555; font-weight: 700; margin-bottom: 5px; display: block; }
+        .recurrente-tag { background: #bbdefb; color: #0d47a1; padding: 2px 8px; border-radius: 10px; font-size: 0.75em; }
+        
+        .acciones { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 12px; }
+        .btn-acc { padding: 8px 2px; border: none; border-radius: 6px; color: white; font-size: 9px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        .bg-ws { background: #25D366; } .bg-map { background: #4285F4; } .bg-edit { background: #607d8b; } .bg-fin { background: var(--rojo); } .bg-del { background: #333; }
+        
+        /* Contenedor de botones de guardado */
+        .save-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    </style>
 </head>
-
 <body>
 
-<audio id="audio" src="alerta.mp3"></audio>
+<audio id="audioAlerta" src="alerta.mp3" preload="auto"></audio>
 
 <div class="header">
-<h2>TAXI PLATINO</h2>
+    <h2 style="margin:5px 0">TAXI PLATINO</h2>
+    <small>OPERACIONES MINATITLÁN</small>
 </div>
 
-<div class="form-card">
-<input type="hidden" id="id">
-<input id="nombre" placeholder="Cliente">
-<input id="telefono" placeholder="Teléfono">
-<input id="domicilio" placeholder="Domicilio">
-<input type="datetime-local" id="fecha">
-
-<select id="rec">
-<option value="no">Único</option>
-<option value="diario">Diario</option>
-</select>
-
-<button class="btn" onclick="guardar(false)">Guardar</button>
-<button class="btn ws" onclick="guardar(true)">Guardar + WhatsApp</button>
+<div class="form-card" id="formulario">
+    <h3 id="form-title" style="margin-top:0; color:var(--azul)">Agendar Servicio</h3>
+    <input type="hidden" id="edit-id">
+    <input type="text" id="nombre" placeholder="Nombre del Cliente">
+    <input type="tel" id="telefono" placeholder="📱 WhatsApp Cliente (10 dígitos)" maxlength="10">
+    <input type="text" id="domicilio" placeholder="📍 Domicilio de Recolección">
+    <input type="datetime-local" id="fecha">
+    <select id="recurrencia">
+        <option value="no">Servicio Único</option>
+        <option value="diario">🔁 Repetir cada 24h</option>
+    </select>
+    
+    <div class="save-buttons">
+        <button class="btn-main" onclick="procesarServicio(false)" id="btn-save">GUARDAR LOCAL</button>
+        <button class="btn-main btn-group-ws" onclick="procesarServicio(true)" id="btn-save-group">GUARDAR Y REPORTAR A GRUPO</button>
+    </div>
+    
+    <div style="margin-top:15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <button class="btn-main btn-excel" onclick="exportarExcel()">📊 REPORTE EXCEL</button>
+        <button class="btn-main btn-clear" onclick="borradorRapido()">🧹 LIMPIAR FINALIZADOS</button>
+    </div>
+    
+    <button id="btn-cancel" style="display:none; background:none; border:none; color:red; width:100%; margin-top:10px; cursor:pointer;" onclick="cancelarEdicion()">✖ Cancelar Edición</button>
 </div>
 
 <div id="lista"></div>
 
 <script>
-let db, servicios=[];
-const audio=document.getElementById("audio");
-let audioOK=false;
+    let db;
+    let servicios = [];
+    const request = indexedDB.open("TaxiPlatinoDB", 1);
+    const audio = document.getElementById('audioAlerta');
 
-document.body.addEventListener("click",()=>{
- if(!audioOK){audio.play().then(()=>audio.pause()); audioOK=true}
-},{once:true});
+    request.onupgradeneeded = (e) => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains("servicios")) {
+            db.createObjectStore("servicios", { keyPath: "id" });
+        }
+    };
 
-indexedDB.open("TaxiDB",1).onupgradeneeded=e=>{
- e.target.result.createObjectStore("servicios",{keyPath:"id"});
-};
+    request.onsuccess = (e) => {
+        db = e.target.result;
+        cargarDesdeDB();
+        // Iniciar el chequeo de urgencias cada minuto
+        setInterval(cargarDesdeDB, 60000); 
+    };
 
-indexedDB.open("TaxiDB").onsuccess=e=>{
- db=e.target.result;
- cargar();
- setInterval(render,60000);
-};
+    function cargarDesdeDB() {
+        if(!db) return;
+        const transaction = db.transaction(["servicios"], "readonly");
+        const store = transaction.objectStore("servicios");
+        const requestGetAll = store.getAll();
 
-function cargar(){
- const tx=db.transaction(["servicios"],"readonly");
- tx.objectStore("servicios").getAll().onsuccess=e=>{
-  servicios=e.target.result;
-  servicios.sort((a,b)=>a.estado==="finalizado"?1:a.fecha-b.fecha);
-  render();
- };
-}
+        requestGetAll.onsuccess = () => {
+            servicios = requestGetAll.result;
+            servicios.sort((a, b) => {
+                if (a.estado === 'finalizado' && b.estado !== 'finalizado') return 1;
+                if (a.estado !== 'finalizado' && b.estado === 'finalizado') return -1;
+                return new Date(a.fecha) - new Date(b.fecha);
+            });
+            render();
+        };
+    }
 
-function validarTel(t){return /^\d{10}$/.test(t)}
+    // Modificada para aceptar el parámetro de enviar a grupo
+    function procesarServicio(enviarAGrupo = false) {
+        const id = document.getElementById('edit-id').value;
+        const nombre = document.getElementById('nombre').value;
+        const telefono = document.getElementById('telefono').value;
+        const domicilio = document.getElementById('domicilio').value;
+        const fecha = document.getElementById('fecha').value;
+        const recurrencia = document.getElementById('recurrencia').value;
 
-function guardar(ws=false){
- const id=document.getElementById("id").value;
- const nombre=document.getElementById("nombre").value.trim();
- const tel=document.getElementById("telefono").value.trim();
- const dom=document.getElementById("domicilio").value.trim();
- const fecha=document.getElementById("fecha").value;
+        if(!nombre || !domicilio || !fecha) {
+            return Swal.fire('Atención', 'Llena los campos (Teléfono opcional para grupo)', 'warning');
+        }
 
- if(!nombre||!dom||!fecha) return Swal.fire("Error","Faltan datos","warning");
- if(tel && !validarTel(tel)) return Swal.fire("Error","Tel inválido","error");
+        const datos = {
+            id: id ? parseInt(id) : Date.now(),
+            nombre, telefono: telefono || 'N/A', domicilio, fecha, recurrencia,
+            estado: id ? servicios.find(s => s.id == id).estado : 'pendiente',
+            unidad: id ? servicios.find(s => s.id == id).unidad : 'N/A'
+        };
 
- const old=servicios.find(s=>s.id==id)||{};
+        const transaction = db.transaction(["servicios"], "readwrite");
+        transaction.objectStore("servicios").put(datos);
+        
+        transaction.oncomplete = () => {
+            cancelarEdicion();
+            cargarDesdeDB();
+            
+            if(enviarAGrupo) {
+                enviarReporteAGrupo(datos);
+            } else {
+                Swal.fire('Éxito', 'Guardado localmente', 'success');
+            }
+        };
+    }
 
- const data={
-  id:id?Number(id):Date.now()+Math.random(),
-  nombre, telefono:tel||"N/A", domicilio:dom,
-  fecha:new Date(fecha).getTime(),
-  recurrencia:document.getElementById("rec").value,
-  estado:old.estado||"pendiente",
-  unidad:old.unidad||"N/A"
- };
+    // Punto 3: Función para enviar el reporte al grupo de WhatsApp
+    function enviarReporteAGrupo(s) {
+        const f = new Date(s.fecha);
+        const fechaFmt = f.toLocaleDateString('es-MX', { weekday:'short', day:'numeric', month:'short' });
+        const horaFmt = f.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        
+        const msg = `*🆕 NUEVO SERVICIO AGENDADO*\n\n👤 *Cliente:* ${s.nombre.toUpperCase()}\n📞 *Tel:* ${s.telefono}\n📅 *Fecha:* ${fechaFmt}\n⏰ *Hora:* ${horaFmt}\n📍 *Recolección:* ${s.domicilio}\n🔁 *Recurrente:* ${s.recurrencia === 'diario' ? 'SÍ' : 'NO'}\n\n_Asignar unidad a la brevedad._`;
+        
+        // Abre WhatsApp general (para seleccionar grupo)
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
+    }
 
- db.transaction(["servicios"],"readwrite").objectStore("servicios").put(data).onsuccess=()=>{
-  limpiar();
-  cargar();
-  if(ws) enviar(data);
- };
-}
+    async function asignarUnidad(id) {
+        const { value: unidad } = await Swal.fire({
+            title: 'Asignar Unidad',
+            input: 'text',
+            inputLabel: 'Número de Taxi',
+            confirmButtonColor: '#1a2b4c',
+            showCancelButton: true
+        });
 
-function enviar(s){
- const f=new Date(s.fecha);
- const msg=`Servicio ${s.nombre} ${f.toLocaleString()} ${s.domicilio}`;
- window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
-}
+        if (unidad) {
+            const s = servicios.find(x => x.id === id);
+            s.estado = 'proceso';
+            s.unidad = unidad;
 
-function asignar(id){
- Swal.fire({input:"text",title:"Unidad"}).then(r=>{
-  if(!r.value) return;
-  let s=servicios.find(x=>x.id===id);
-  s.estado="en-proceso";
-  s.unidad=r.value;
-  db.transaction(["servicios"],"readwrite").objectStore("servicios").put(s);
-  cargar();
- });
-}
+            const transaction = db.transaction(["servicios"], "readwrite");
+            transaction.objectStore("servicios").put(s);
+            transaction.oncomplete = () => {
+                const msg = `*TAXI PLATINO:*\nHola *${s.nombre.toUpperCase()}*, su unidad asignada es la *[${unidad}]*.\n📍 Recolección: ${s.domicilio}`;
+                
+                // Intenta enviar directo si hay teléfono, si no abre WhatsApp general
+                if(s.telefono && s.telefono !== 'N/A' && s.telefono.length === 10) {
+                    window.open(`https://wa.me/52${s.telefono}?text=${encodeURIComponent(msg)}`);
+                } else {
+                     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
+                }
+                cargarDesdeDB();
+            };
+        }
+    }
 
-function finalizar(id){
- let s=servicios.find(x=>x.id===id);
- const tx=db.transaction(["servicios"],"readwrite");
- const store=tx.objectStore("servicios");
+    function finalizar(id) {
+        const s = servicios.find(x => x.id === id);
+        const transaction = db.transaction(["servicios"], "readwrite");
+        const store = transaction.objectStore("servicios");
 
- if(s.recurrencia==="diario"){
-  let f=new Date(s.fecha);
-  f.setDate(f.getDate()+1);
-  store.add({...s,id:Date.now()+Math.random(),fecha:f.getTime(),estado:"pendiente",unidad:"N/A"});
- }
+        if(s.recurrencia === 'diario') {
+            const nuevaFecha = new Date(s.fecha);
+            nuevaFecha.setDate(nuevaFecha.getDate() + 1);
+            store.add({ ...s, id: Date.now(), fecha: nuevaFecha.toISOString().slice(0,16), estado: 'pendiente', unidad: 'N/A' });
+        }
 
- s.estado="finalizado";
- store.put(s);
- tx.oncomplete=cargar;
-}
+        s.estado = 'finalizado';
+        store.put(s);
+        transaction.oncomplete = () => cargarDesdeDB();
+    }
 
-function eliminar(id){
- db.transaction(["servicios"],"readwrite").objectStore("servicios").delete(id);
- cargar();
-}
+    function eliminar(id) {
+        Swal.fire({ title: '¿Eliminar?', icon: 'warning', showCancelButton: true }).then((res) => {
+            if (res.isConfirmed) {
+                const transaction = db.transaction(["servicios"], "readwrite");
+                transaction.objectStore("servicios").delete(id);
+                transaction.oncomplete = () => cargarDesdeDB();
+            }
+        });
+    }
 
-function limpiar(){
- document.querySelectorAll("input").forEach(i=>i.value="");
-}
+    function borradorRapido() {
+        const finalizados = servicios.filter(s => s.estado === 'finalizado');
+        if (finalizados.length === 0) return Swal.fire('Info', 'No hay finalizados', 'info');
 
-function esc(t){return t.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}
+        Swal.fire({
+            title: '¿Limpiar historial?',
+            text: `Se borrarán ${finalizados.length} servicios.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#d32f2f'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const transaction = db.transaction(["servicios"], "readwrite");
+                const store = transaction.objectStore("servicios");
+                finalizados.forEach(s => store.delete(s.id));
+                transaction.oncomplete = () => {
+                    Swal.fire('Limpieza exitosa', '', 'success');
+                    cargarDesdeDB();
+                };
+            }
+        });
+    }
 
-function render(){
- const lista=document.getElementById("lista");
- lista.innerHTML="";
- const now=Date.now();
- const lim=now+15*60000;
- let urg=false;
+    function editar(id) {
+        const s = servicios.find(x => x.id == id);
+        document.getElementById('edit-id').value = s.id;
+        document.getElementById('nombre').value = s.nombre;
+        document.getElementById('telefono').value = s.telefono === 'N/A' ? '' : s.telefono;
+        document.getElementById('domicilio').value = s.domicilio;
+        document.getElementById('fecha').value = s.fecha;
+        document.getElementById('recurrencia').value = s.recurrencia;
+        document.getElementById('form-title').innerText = "Editando Servicio";
+        document.getElementById('btn-save').innerText = "ACTUALIZAR LOCAL";
+        document.getElementById('btn-save-group').innerText = "ACTUALIZAR Y REPORTAR";
+        document.getElementById('btn-cancel').style.display = "block";
+        window.scrollTo({top: 0, behavior: 'smooth'});
+    }
 
- servicios.forEach(s=>{
-  const esUrg=s.estado!=="finalizado" && s.fecha>now && s.fecha<=lim;
-  if(esUrg) urg=true;
+    function cancelarEdicion() {
+        document.getElementById('edit-id').value = "";
+        document.getElementById('nombre').value = "";
+        document.getElementById('telefono').value = "";
+        document.getElementById('domicilio').value = "";
+        document.getElementById('fecha').value = "";
+        document.getElementById('recurrencia').value = "no";
+        document.getElementById('form-title').innerText = "Agendar Servicio";
+        document.getElementById('btn-save').innerText = "GUARDAR LOCAL";
+        document.getElementById('btn-save-group').innerText = "GUARDAR Y REPORTAR A GRUPO";
+        document.getElementById('btn-cancel').style.display = "none";
+    }
 
-  const div=document.createElement("div");
-  div.className=`servicio-card ${s.estado} ${esUrg?"urgente":""}`;
-  div.innerHTML=`
-  <b>${esc(s.nombre)}</b><br>
-  ${new Date(s.fecha).toLocaleString()}<br>
-  ${esc(s.domicilio)}<br>
-  Unidad:${s.unidad}<br>
-  <button onclick="asignar(${s.id})">Unidad</button>
-  <button onclick="finalizar(${s.id})">Fin</button>
-  <button onclick="eliminar(${s.id})">X</button>
-  `;
-  lista.appendChild(div);
- });
+    function exportarExcel() {
+        if(servicios.length === 0) return;
+        const ws = XLSX.utils.json_to_sheet(servicios);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Servicios");
+        XLSX.writeFile(wb, "Reporte_Taxi_Platino.xlsx");
+    }
 
- if(urg && audioOK) audio.play().catch(()=>{});
-}
+    function render() {
+        const lista = document.getElementById('lista');
+        lista.innerHTML = '<h3 style="margin-left:10px; color:#555">Hoja de Ruta</h3>';
+        
+        let hayUrgentes = false;
+        const ahora = new Date();
+        const quinceMinutosDespues = new Date(ahora.getTime() + 15 * 60000);
 
-if("serviceWorker" in navigator){
- navigator.serviceWorker.register("sw.js");
-}
+        servicios.forEach(s => {
+            const f = new Date(s.fecha);
+            
+            // Punto 2: Lógica de Urgencia (Visual)
+            // Es urgente si está pendiente/proceso, es para hoy, y falta menos de 15 min.
+            const esUrgente = (s.estado !== 'finalizado' && f > ahora && f <= quinceMinutosDespues);
+            
+            if(esUrgente) hayUrgentes = true;
+
+            const div = document.createElement('div');
+            div.className = `servicio-card ${s.estado} ${esUrgente ? 'urgente-blink' : ''}`;
+            div.innerHTML = `
+                <span class="time-tag">⏰ ${f.toLocaleDateString()} - ${f.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                <strong style="font-size:1.1em">${s.nombre}</strong> ${s.recurrencia === 'diario' ? '<span class="recurrente-tag">🔁 Diario</span>' : ''}
+                <div style="font-size:0.9em; color:#666">📞 ${s.telefono}</div>
+                <div style="margin-top:5px; color:#444">📍 ${s.domicilio}</div>
+                <div style="font-size:0.8em; margin-top:5px"><b>Unidad:</b> ${s.unidad}</div>
+                <div class="acciones">
+                    <button class="btn-acc bg-ws" onclick="asignarUnidad(${s.id})">Unidad</button>
+                    <button class="btn-acc bg-map" onclick="window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('${s.domicilio}'))">Maps</button>
+                    <button class="btn-acc bg-edit" onclick="editar(${s.id})">Edit</button>
+                    ${s.estado !== 'finalizado' ? `<button class="btn-acc bg-fin" onclick="finalizar(${s.id})">Fin</button>` : ''}
+                    <button class="btn-acc bg-del" onclick="eliminar(${s.id})">Borrar</button>
+                </div>
+            `;
+            lista.appendChild(div);
+        });
+
+        // Punto 2: Lógica de Urgencia (Audible)
+        if(hayUrgentes) {
+            // Reproducir sonido. Nota: Los navegadores modernos bloquean el audio automático.
+            // Requiere que el usuario haya interactuado con la página al menos una vez antes.
+            audio.play().catch(e => console.log("Audio bloqueado por navegador hasta interacción: ", e));
+        }
+    }
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js');
+    }
 </script>
 </body>
 </html>
