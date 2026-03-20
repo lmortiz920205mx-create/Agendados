@@ -3,107 +3,194 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Taxi Platino Cloud v5</title>
-
-<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
+<title>Taxi Platino Admin</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a2b4c">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
-body { font-family: sans-serif; background:#f4f4f4; padding:10px; }
-.form { background:#fff; padding:10px; border-radius:10px; margin-bottom:15px; }
-input, select, button { width:100%; margin:5px 0; padding:10px; }
-.card { background:#fff; padding:10px; border-left:5px solid orange; margin-bottom:10px; border-radius:8px;}
+:root {
+--azul:#1a2b4c; --plata:#f4f4f4; --rojo:#d32f2f;
+--amarillo:#fbc02d; --verde:#388e3c; --urgente:#ffcccc;
+}
+body{font-family:'Segoe UI';background:var(--plata);margin:0;padding:15px;padding-bottom:80px}
+.header{text-align:center;background:var(--azul);color:#fff;padding:10px;border-radius:0 0 15px 15px;margin:-15px -15px 20px}
+.form-card{background:#fff;padding:15px;border-radius:12px;margin-bottom:20px}
+input,select{width:100%;padding:12px;margin:6px 0;border-radius:8px}
+.btn-main{background:var(--azul);color:#fff;padding:12px;border:none;border-radius:8px;width:100%;margin-bottom:5px}
+.btn-group-ws{background:#25D366}
+
+.servicio-card{background:#fff;margin-bottom:10px;padding:12px;border-left:6px solid}
+.pendiente{border-color:var(--amarillo)}
+.en-proceso{border-color:var(--verde)}
+.finalizado{border-color:var(--rojo);opacity:.7}
+
+.urgente-blink{background:var(--urgente);animation:blink 1.5s infinite}
+@keyframes blink{50%{opacity:.7}}
 </style>
 </head>
 
 <body>
+<audio id="audioAlerta" src="alerta.mp3"></audio>
 
-<div class="form">
-<input id="nombre" placeholder="Nombre">
-<input id="domicilio" placeholder="Domicilio">
+<div class="header">
+<h2>TAXI PLATINO</h2>
+<small>OPERACIONES</small>
+</div>
+
+<div class="form-card">
+<input type="hidden" id="edit-id">
+<input type="text" id="nombre" placeholder="Nombre">
+<input type="tel" id="telefono" placeholder="Teléfono">
+<input type="text" id="domicilio" placeholder="Domicilio">
 <input type="datetime-local" id="fecha">
 <select id="recurrencia">
-<option value="unico">Único</option>
+<option value="no">Único</option>
 <option value="diario">Diario</option>
 </select>
-<button onclick="guardar()">Guardar</button>
+
+<button class="btn-main" onclick="procesarServicio(false)">Guardar</button>
+<button class="btn-main btn-group-ws" onclick="procesarServicio(true)">Guardar + WhatsApp</button>
 </div>
 
 <div id="lista"></div>
 
 <script>
-const firebaseConfig = { 
-apiKey: "TU_API_KEY",
-authDomain: "TU_AUTH_DOMAIN",
-databaseURL: "TU_DATABASE_URL",
-projectId: "TU_PROJECT_ID"
+let db, servicios=[];
+const audio=document.getElementById('audioAlerta');
+let audioActivado=false;
+
+// activar audio tras interacción
+window.addEventListener('click',()=>{
+ if(!audioActivado){audio.play().then(()=>audio.pause()); audioActivado=true}
+},{once:true});
+
+const req=indexedDB.open("TaxiDB",1);
+req.onupgradeneeded=e=>{
+ db=e.target.result;
+ db.createObjectStore("servicios",{keyPath:"id"});
 };
+req.onsuccess=e=>{db=e.target.result; cargar(); setInterval(render,60000)};
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-
-function guardar() {
-    const id = Date.now().toString();
-    const nom = nombre.value;
-    const dom = domicilio.value;
-    const fec = fecha.value;
-    const rec = recurrencia.value;
-
-    if(!nom || !dom || !fec){
-        Swal.fire("Error","Faltan datos","error");
-        return;
-    }
-
-    const msg = `NUEVO\n${nom}\n${fec}\n${dom}`;
-
-    db.ref('servicios/' + id).set({
-        id,
-        nombre: nom,
-        dom,
-        fec,
-        recurrencia: rec,
-        estado: 'pendiente'
-    })
-    .then(() => {
-        window.open("https://wa.me/?text=" + encodeURIComponent(msg), "_blank");
-        limpiar();
-    })
-    .catch(err => {
-        console.error(err);
-        Swal.fire("Error","No se guardó","error");
-    });
+function cargar(){
+ const tx=db.transaction(["servicios"],"readonly");
+ const store=tx.objectStore("servicios");
+ store.getAll().onsuccess=e=>{
+  servicios=e.target.result;
+  servicios.sort((a,b)=>{
+   if(a.estado==='finalizado') return 1;
+   return a.fecha-b.fecha;
+  });
+  render();
+ };
 }
 
-db.ref('servicios').on('value', snap => {
-    const data = snap.val();
-    console.log("DATA:", data);
+function validarTel(t){return /^\d{10}$/.test(t)}
 
-    lista.innerHTML = "";
+function procesarServicio(ws=false){
+ const id=document.getElementById('edit-id').value;
+ const nombre=document.getElementById('nombre').value.trim();
+ const tel=document.getElementById('telefono').value.trim();
+ const dom=document.getElementById('domicilio').value.trim();
+ const fecha=document.getElementById('fecha').value;
 
-    if(!data){
-        lista.innerHTML = "<p>No hay servicios</p>";
-        return;
-    }
+ if(!nombre||!dom||!fecha) return Swal.fire('Error','Faltan datos','warning');
+ if(tel && !validarTel(tel)) return Swal.fire('Error','Tel inválido','error');
 
-    Object.values(data).forEach(s => {
-        const div = document.createElement("div");
-        div.className = "card";
-        div.innerHTML = `
-            <b>${s.nombre}</b><br>
-            ${s.dom}<br>
-            ${s.fec}
-        `;
-        lista.appendChild(div);
-    });
-});
+ const existente=servicios.find(s=>s.id==id)||{};
+
+ const data={
+  id:id?Number(id):Date.now()+Math.random(),
+  nombre, telefono:tel||'N/A', domicilio:dom,
+  fecha:new Date(fecha).getTime(),
+  recurrencia:document.getElementById('recurrencia').value,
+  estado:existente.estado||'pendiente',
+  unidad:existente.unidad||'N/A'
+ };
+
+ const tx=db.transaction(["servicios"],"readwrite");
+ tx.objectStore("servicios").put(data);
+ tx.oncomplete=()=>{
+  cargar(); limpiar();
+  if(ws) enviarWS(data);
+ };
+}
+
+function enviarWS(s){
+ const f=new Date(s.fecha);
+ const msg=`Servicio ${s.nombre} ${f.toLocaleString()} ${s.domicilio}`;
+ window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`);
+}
+
+function asignarUnidad(id){
+ Swal.fire({title:'Unidad',input:'text'}).then(r=>{
+  if(!r.value) return;
+  const s=servicios.find(x=>x.id===id);
+  s.estado='en-proceso';
+  s.unidad=r.value;
+  db.transaction(["servicios"],"readwrite").objectStore("servicios").put(s);
+  cargar();
+ });
+}
+
+function finalizar(id){
+ const s=servicios.find(x=>x.id===id);
+ const tx=db.transaction(["servicios"],"readwrite");
+ const store=tx.objectStore("servicios");
+
+ if(s.recurrencia==='diario'){
+  const f=new Date(s.fecha);
+  f.setDate(f.getDate()+1);
+  store.add({...s,id:Date.now()+Math.random(),fecha:f.getTime(),estado:'pendiente',unidad:'N/A'});
+ }
+ s.estado='finalizado';
+ store.put(s);
+ tx.oncomplete=cargar;
+}
+
+function eliminar(id){
+ db.transaction(["servicios"],"readwrite").objectStore("servicios").delete(id);
+ cargar();
+}
 
 function limpiar(){
-    nombre.value="";
-    domicilio.value="";
-    fecha.value="";
+ document.getElementById('edit-id').value='';
+ document.querySelectorAll('input').forEach(i=>i.value='');
 }
-</script>
 
+function esc(t){return t.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+
+function render(){
+ const lista=document.getElementById('lista');
+ lista.innerHTML='';
+ const ahora=Date.now();
+ const limite=ahora+15*60000;
+ let urg=false;
+
+ servicios.forEach(s=>{
+  const f=s.fecha;
+  const esUrg=s.estado!=='finalizado' && f>ahora && f<=limite;
+  if(esUrg) urg=true;
+
+  const div=document.createElement('div');
+  div.className=`servicio-card ${s.estado} ${esUrg?'urgente-blink':''}`;
+  div.innerHTML=`
+   <b>${esc(s.nombre)}</b><br>
+   ${new Date(f).toLocaleString()}<br>
+   ${esc(s.domicilio)}<br>
+   Unidad:${s.unidad}<br>
+   <button onclick="asignarUnidad(${s.id})">Unidad</button>
+   <button onclick="finalizar(${s.id})">Fin</button>
+   <button onclick="eliminar(${s.id})">X</button>
+  `;
+  lista.appendChild(div);
+ });
+
+ if(urg && audioActivado) audio.play().catch(()=>{});
+}
+
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}
+</script>
 </body>
 </html>
