@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taxi Platino Cloud v4</title>
+    <title>Taxi Platino Cloud v5</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1a2b4c">
     
@@ -100,29 +100,43 @@
     db.ref('servicios').on('value', (snap) => {
         const lista = document.getElementById('lista');
         lista.innerHTML = '<h3 style="margin-left:10px; color:#555">Hoja de Ruta</h3>';
+        
         const data = snap.val();
-        if(!data) return;
+        if (!data) {
+            lista.innerHTML += '<p style="text-align:center; color:gray">No hay servicios registrados.</p>';
+            return;
+        }
 
         const ahora = new Date();
         const prox15 = new Date(ahora.getTime() + 15 * 60000);
 
-        Object.values(data).sort((a,b) => new Date(a.fec) - new Date(b.fec)).forEach(s => {
+        Object.keys(data).map(key => data[key])
+        .sort((a,b) => new Date(a.fec) - new Date(b.fec))
+        .forEach(s => {
             const f = new Date(s.fec);
             const esProceso = s.estado === 'proceso';
             const esFin = s.estado === 'finalizado';
             const esUrgente = s.estado === 'pendiente' && f <= prox15 && f > ahora;
             
-            if(esUrgente) document.getElementById('alertaSonido').play().catch(()=>{});
+            if(esUrgente) {
+                const audio = document.getElementById('alertaSonido');
+                if(audio) audio.play().catch(() => console.log("Audio en espera"));
+            }
 
             const div = document.createElement('div');
             div.className = "servicio-card " + (esProceso ? "estado-proceso " : "") + (esFin ? "estado-finalizado " : "") + (esUrgente ? "urgente" : "");
+            
+            // Corrección de URL de Mapas para evitar errores de codificación
+            const mapUrl = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(s.dom);
+
             div.innerHTML = `
                 <small>⏰ ${f.toLocaleString()}</small><br>
                 <strong>${s.nombre}</strong> ${s.recurrencia === 'diario' ? '🔁' : ''}
                 <div>📍 ${s.dom}</div>
+                <div style="font-size: 0.8em; margin-top: 5px;">🚕 Unidad: ${s.unidad || 'N/A'}</div>
                 <div class="acciones">
                     <button class="btn-acc bg-ws" onclick="asignarUnidad('${s.id}')">Taxi</button>
-                    <button class="btn-acc bg-map" onclick="window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('${s.dom}'))">Mapa</button>
+                    <button class="btn-acc bg-map" onclick="window.open('${mapUrl}')">Mapa</button>
                     <button class="btn-acc bg-edit" onclick="editar('${s.id}')">Edit</button>
                     <button class="btn-acc bg-fin" onclick="finalizarServicio('${s.id}')">Fin</button>
                     <button class="btn-acc bg-del" onclick="eliminar('${s.id}')">X</button>
@@ -133,7 +147,7 @@
     });
 
     function asignarUnidad(id) {
-        Swal.fire({ title: 'Unidad', input: 'text', showCancelButton: true }).then(res => {
+        Swal.fire({ title: 'Asignar Unidad', input: 'text', showCancelButton: true }).then(res => {
             if(res.value) db.ref('servicios/' + id).update({ unidad: res.value, estado: 'proceso' });
         });
     }
@@ -145,7 +159,13 @@
                 const f = new Date(s.fec);
                 f.setDate(f.getDate() + 1);
                 const nuevaId = Date.now().toString();
-                db.ref('servicios/' + nuevaId).set({ ...s, id: nuevaId, fec: f.toISOString().slice(0,16), estado: 'pendiente' });
+                db.ref('servicios/' + nuevaId).set({ 
+                    ...s, 
+                    id: nuevaId, 
+                    fec: f.toISOString().slice(0,16), 
+                    estado: 'pendiente',
+                    unidad: 'N/A' 
+                });
             }
             db.ref('servicios/' + id).update({ estado: 'finalizado' });
         });
@@ -158,24 +178,33 @@
             document.getElementById('nombre').value = s.nombre;
             document.getElementById('domicilio').value = s.dom;
             document.getElementById('fecha').value = s.fec;
+            document.getElementById('recurrencia').value = s.recurrencia || 'unico';
             document.getElementById('form-title').innerText = "Editando...";
             document.getElementById('btn-cancel').style.display = "block";
             window.scrollTo(0,0);
         });
     }
 
-    function eliminar(id) { db.ref('servicios/' + id).remove(); }
+    function eliminar(id) {
+        Swal.fire({ title: '¿Eliminar?', showCancelButton: true }).then(r => {
+            if(r.isConfirmed) db.ref('servicios/' + id).remove();
+        });
+    }
 
     function limpiarFinalizados() {
         db.ref('servicios').once('value', (snap) => {
             const data = snap.val();
+            if(!data) return;
             for(let key in data) if(data[key].estado === 'finalizado') db.ref('servicios/' + key).remove();
+            Swal.fire('Limpieza', 'Servicios finalizados eliminados', 'success');
         });
     }
 
     function exportarExcel() {
         db.ref('servicios').once('value', (snap) => {
-            const ws = XLSX.utils.json_to_sheet(Object.values(snap.val() || {}));
+            const data = snap.val();
+            if(!data) return Swal.fire('Error', 'No hay datos para exportar', 'error');
+            const ws = XLSX.utils.json_to_sheet(Object.values(data));
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Servicios");
             XLSX.writeFile(wb, "Reporte_Taxi_Platino.xlsx");
@@ -187,6 +216,7 @@
         document.getElementById('nombre').value = "";
         document.getElementById('domicilio').value = "";
         document.getElementById('fecha').value = "";
+        document.getElementById('recurrencia').value = "unico";
         document.getElementById('form-title').innerText = "Agendar Servicio";
         document.getElementById('btn-cancel').style.display = "none";
     }
