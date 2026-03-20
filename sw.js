@@ -1,4 +1,4 @@
-const CACHE_NAME = "platino-v2.8";
+const CACHE_NAME = "platino-v2.9";
 const resources = [
   "./",
   "./index.html",
