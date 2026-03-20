@@ -3,32 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taxi Platino Cloud</title>
+    <title>Taxi Platino Cloud v2</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1a2b4c">
     
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <style>
         :root { --azul: #1a2b4c; --plata: #f4f4f4; --rojo: #d32f2f; --verde: #2e7d32; --amarillo: #fbc02d; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--plata); margin: 0; padding: 15px; padding-bottom: 80px; }
         .header { text-align: center; background: var(--azul); color: white; padding: 10px; border-radius: 0 0 15px 15px; margin: -15px -15px 20px -15px; }
-        .form-card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-top: 4px solid var(--azul); }
+        .form-card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-top: 4px solid var(--azul); margin-bottom: 20px; }
         input, select { width: 100%; padding: 12px; margin: 6px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        .btn-group-ws { background: #25D366; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; margin-top: 10px; }
-        .servicio-card { background: white; margin-bottom: 12px; border-radius: 10px; padding: 15px; border-left: 8px solid var(--amarillo); position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05); transition: 0.3s; }
+        
+        .btn-group-ws { background: #25D366; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; }
+        .btn-tool { padding: 10px; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer; margin: 5px 2px; flex: 1; }
+        .tools-container { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        
+        /* Tarjetas y Estados */
+        .servicio-card { background: white; margin-bottom: 12px; border-radius: 10px; padding: 15px; border-left: 8px solid var(--amarillo); position: relative; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .estado-proceso { border-left-color: var(--verde) !important; background-color: #e8f5e9; }
-        .estado-finalizado { border-left-color: var(--rojo) !important; opacity: 0.5; }
-        .badge-camino { background: var(--verde); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; margin-top: 8px; display: inline-block; animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
-        .time-tag { font-size: 0.85em; color: #555; font-weight: 700; display: block; margin-bottom: 4px; }
-        .acciones { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 12px; }
-        .btn-acc { padding: 10px 2px; border: none; border-radius: 6px; color: white; font-size: 10px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
-        .bg-ws { background: #25D366; } .bg-map { background: #4285F4; } .bg-fin { background: var(--rojo); } .bg-del { background: #333; }
-        .urgente { border-left-color: #ff0000 !important; animation: blink 1s infinite; }
+        .estado-finalizado { border-left-color: #777 !important; opacity: 0.6; background-color: #eee; }
+        .urgente { border-left-color: var(--rojo) !important; animation: blink 1s infinite; }
         @keyframes blink { 50% { border-left-color: transparent; } }
+
+        .badge-camino { background: var(--verde); color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; margin-top: 8px; display: inline-block; }
+        .acciones { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 12px; }
+        .btn-acc { padding: 8px 2px; border: none; border-radius: 6px; color: white; font-size: 9px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        
+        /* Colores de botones */
+        .bg-ws { background: var(--verde); } 
+        .bg-map { background: #4285F4; } 
+        .bg-edit { background: #f39c12; }
+        .bg-fin { background: #2c3e50; } 
+        .bg-del { background: var(--rojo); }
+        .bg-excel { background: #1f6e43; }
+        .bg-clear { background: #607d8b; }
     </style>
 </head>
 <body>
@@ -37,7 +50,12 @@
 
 <div class="header">
     <h2>TAXI PLATINO</h2>
-    <small>OPERACIONES EN LA NUBE</small>
+    <small>CENTRAL DE OPERACIONES CLOUD</small>
+</div>
+
+<div class="tools-container">
+    <button class="btn-tool bg-excel" onclick="exportarExcel()">📊 Excel</button>
+    <button class="btn-tool bg-clear" onclick="limpiarFinalizados()">🧹 Limpiar Fin.</button>
 </div>
 
 <div class="form-card" id="formulario">
@@ -48,8 +66,8 @@
     <input type="hidden" id="telefono">
     <input type="text" id="domicilio" placeholder="📍 Domicilio de Recolección">
     <input type="datetime-local" id="fecha">
-    <button class="btn-group-ws" onclick="guardarYEnviar()">✅ GUARDAR Y REPORTAR A GRUPO</button>
-    <button id="btn-cancel" style="display:none; background:none; border:none; color:red; width:100%; margin-top:10px;" onclick="cancelarEdicion()">✖ Cancelar</button>
+    <button class="btn-group-ws" onclick="guardarYEnviar()">✅ GUARDAR Y REPORTAR</button>
+    <button id="btn-cancel" style="display:none; background:none; border:none; color:red; width:100%; margin-top:10px;" onclick="cancelarEdicion()">✖ Cancelar Edición</button>
 </div>
 
 <div id="lista"></div>
@@ -68,19 +86,7 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const agendaContactos = {
-        "Juan Perez": "9221112233",
-        "Maria Sosa": "9214445566"
-    };
-
-    function cargarAgendaUI() {
-        const dl = document.getElementById('agenda');
-        Object.keys(agendaContactos).forEach(nombre => {
-            let opt = document.createElement('option');
-            opt.value = nombre;
-            dl.appendChild(opt);
-        });
-    }
+    const agendaContactos = { "Juan Perez": "9221112233", "Maria Sosa": "9214445566" };
 
     function checarAgenda() {
         const nombre = document.getElementById('nombre').value;
@@ -97,23 +103,15 @@
         if(!nombre || !dom || !fec) return Swal.fire('Error', 'Completa los campos', 'error');
 
         const datos = { id, nombre, tel, dom, fec, estado: 'pendiente', unidad: 'N/A' };
-
-        // 1. Preparar mensaje corto
-        const t = fec.split('T');
-        const msg = `*NUEVO:* ${nombre}\n*HORA:* ${t[1]}\n*UBIC:* ${dom}\n*TEL:* ${tel}`;
         
-        // 2. Abrir WhatsApp inmediatamente para evitar bloqueo de pop-up
+        // WhatsApp primero para evitar bloqueo de popup
+        const msg = `*NUEVO:* ${nombre}\n*HORA:* ${fec.split('T')[1]}\n*UBIC:* ${dom}\n*TEL:* ${tel}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 
-        // 3. Guardar en Firebase
-        db.ref('servicios/' + id).set(datos).then(() => {
-            cancelarEdicion();
-        });
+        db.ref('servicios/' + id).set(datos).then(() => cancelarEdicion());
     }
 
-    db.ref('servicios').on('value', (snapshot) => {
-        render(snapshot.val());
-    });
+    db.ref('servicios').on('value', (snapshot) => render(snapshot.val()));
 
     function render(data) {
         const lista = document.getElementById('lista');
@@ -126,21 +124,24 @@
         Object.values(data).sort((a,b) => new Date(a.fec) - new Date(b.fec)).forEach(s => {
             const f = new Date(s.fec);
             const esProceso = s.estado === 'proceso';
+            const esFinalizado = s.estado === 'finalizado';
             const esUrgente = s.estado === 'pendiente' && f <= prox15 && f > ahora;
             
             if(esUrgente) document.getElementById('alertaSonido').play().catch(()=>{});
 
             const div = document.createElement('div');
-            div.className = `servicio-card ${esProceso ? 'estado-proceso' : ''} ${s.estado === 'finalizado' ? 'estado-finalizado' : ''} ${esUrgente ? 'urgente' : ''}`;
+            div.className = `servicio-card ${esProceso ? 'estado-proceso' : ''} ${esFinalizado ? 'estado-finalizado' : ''} ${esUrgente ? 'urgente' : ''}`;
             
             div.innerHTML = `
-                <span class="time-tag">⏰ ${f.toLocaleDateString()} - ${f.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-                <strong style="font-size:1.1em">${s.nombre}</strong>
-                <div style="color:#444">📍 ${s.dom}</div>
-                ${esProceso ? `<div class="badge-camino">🚖 UNIDAD EN CAMINO: ${s.unidad}</div>` : `<div>🚕 Unidad: ${s.unidad}</div>`}
+                <small>⏰ ${f.toLocaleString()}</small><br>
+                <strong>${s.nombre}</strong>
+                <div style="font-size:0.9em">📍 ${s.dom}</div>
+                ${esProceso ? `<div class="badge-camino">🚖 EN CAMINO: ${s.unidad}</div>` : `<div>🚕 Unidad: ${s.unidad}</div>`}
+                
                 <div class="acciones">
                     <button class="btn-acc bg-ws" onclick="asignarUnidad('${s.id}')">Unidad</button>
-                    <button class="btn-acc bg-map" onclick="window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('${s.dom}'))">Maps</button>
+                    <button class="btn-acc bg-map" onclick="window.open('https://www.google.com/maps/search/${encodeURIComponent(s.dom)}')">Mapa</button>
+                    <button class="btn-acc bg-edit" onclick="editar('${s.id}')">Edit</button>
                     <button class="btn-acc bg-fin" onclick="finalizar('${s.id}')">Fin</button>
                     <button class="btn-acc bg-del" onclick="eliminar('${s.id}')">X</button>
                 </div>
@@ -149,25 +150,61 @@
         });
     }
 
+    // --- FUNCIONES DE BOTONES RESTAURADAS ---
     function asignarUnidad(id) {
-        Swal.fire({ title: 'Número de Taxi', input: 'text', confirmButtonColor: '#1a2b4c', showCancelButton: true }).then(res => {
+        Swal.fire({ title: 'Asignar Taxi', input: 'text', confirmButtonColor: '#1a2b4c', showCancelButton: true }).then(res => {
             if(res.value) db.ref('servicios/' + id).update({ unidad: res.value, estado: 'proceso' });
         });
     }
 
+    function editar(id) {
+        db.ref('servicios/' + id).once('value', (snap) => {
+            const s = snap.val();
+            document.getElementById('edit-id').value = s.id;
+            document.getElementById('nombre').value = s.nombre;
+            document.getElementById('domicilio').value = s.dom;
+            document.getElementById('fecha').value = s.fec;
+            document.getElementById('form-title').innerText = "Editando Servicio";
+            document.getElementById('btn-cancel').style.display = "block";
+            window.scrollTo(0,0);
+        });
+    }
+
     function finalizar(id) { db.ref('servicios/' + id).update({ estado: 'finalizado' }); }
-    function eliminar(id) { db.ref('servicios/' + id).remove(); }
-    
+    function eliminar(id) { 
+        Swal.fire({ title: '¿Eliminar?', icon: 'warning', showCancelButton: true }).then(r => {
+            if(r.isConfirmed) db.ref('servicios/' + id).remove();
+        });
+    }
+
+    function limpiarFinalizados() {
+        db.ref('servicios').once('value', (snap) => {
+            const data = snap.val();
+            Object.values(data).forEach(s => {
+                if(s.estado === 'finalizado') db.ref('servicios/' + s.id).remove();
+            });
+            Swal.fire('Limpieza', 'Servicios finalizados eliminados', 'success');
+        });
+    }
+
+    function exportarExcel() {
+        db.ref('servicios').once('value', (snap) => {
+            const data = Object.values(snap.val() || {});
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Servicios");
+            XLSX.writeFile(wb, `Reporte_Taxi_Platino_${new Date().toLocaleDateString()}.xlsx`);
+        });
+    }
+
     function cancelarEdicion() {
         document.getElementById('edit-id').value = "";
         document.getElementById('nombre').value = "";
-        document.getElementById('telefono').value = "";
         document.getElementById('domicilio').value = "";
         document.getElementById('fecha').value = "";
+        document.getElementById('form-title').innerText = "Agendar Servicio";
         document.getElementById('btn-cancel').style.display = "none";
     }
-
-    cargarAgendaUI();
 </script>
 </body>
 </html>
