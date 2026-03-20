@@ -7,72 +7,40 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1a2b4c">
     <meta name="apple-mobile-web-app-capable" content="yes">
-
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
     <style>
-        :root {
-            --azul: #1a2b4c; --plata: #f4f4f4; --rojo: #d32f2f;
-            --amarillo: #fbc02d; --verde: #388e3c; --texto: #333;
-            --urgente: #ffebee;
-        }
-        body { font-family: 'Segoe UI', Roboto, sans-serif; background: var(--plata); margin: 0; padding: 15px; padding-bottom: 80px; color: var(--texto); }
-
-        .header { text-align: center; background: var(--azul); color: white; padding: 15px; border-radius: 0 0 15px 15px; margin: -15px -15px 20px -15px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-
+        :root { --azul: #1a2b4c; --plata: #f4f4f4; --rojo: #d32f2f; --amarillo: #fbc02d; --verde: #388e3c; --texto: #333; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--plata); margin: 0; padding: 15px; padding-bottom: 80px; }
+        .header { text-align: center; background: var(--azul); color: white; padding: 15px; border-radius: 0 0 15px 15px; margin: -15px -15px 20px -15px; }
         .form-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 25px; border-top: 5px solid var(--azul); }
-
-        input, select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; outline: none; transition: 0.3s; }
-        input:focus { border-color: var(--azul); }
-
-        .btn-main { background: var(--azul); color: white; border: none; padding: 16px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 14px; text-transform: uppercase; }
-        .btn-main:active { transform: scale(0.98); }
-
+        input, select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
+        .btn-main { background: var(--azul); color: white; border: none; padding: 16px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; }
         .btn-excel { background: #1D6F42; margin-top: 10px; }
         .btn-clear { background: #607d8b; margin-top: 10px; }
-        .btn-group-ws { background: #25D366; margin-bottom: 10px; }
-
-        .servicio-card { background: white; margin-bottom: 15px; border-radius: 12px; padding: 18px; border-left: 10px solid; position: relative; box-shadow: 0 3px 10px rgba(0,0,0,0.08); transition: 0.3s; }
+        .servicio-card { background: white; margin-bottom: 15px; border-radius: 12px; padding: 18px; border-left: 10px solid; box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
         .pendiente { border-left-color: var(--amarillo); }
         .en-proceso { border-left-color: var(--verde); background: #f9fff9; }
-        .finalizado { border-left-color: #9e9e9e; background: #fafafa; opacity: 0.8; }
-
-        .urgente-blink {
-            border-left-color: #ff0000 !important;
-            background-color: var(--urgente) !important;
-            animation: blinker 1.2s linear infinite;
-        }
-        @keyframes blinker { 50% { opacity: 0.7; } }
-
-        .time-tag { font-size: 0.85em; color: var(--azul); font-weight: 800; margin-bottom: 8px; display: block; }
-        .recurrente-tag { background: #e3f2fd; color: #0d47a1; padding: 3px 10px; border-radius: 20px; font-size: 0.7em; font-weight: bold; }
-
-        .acciones { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 15px; }
-        .btn-acc { padding: 12px 2px; border: none; border-radius: 8px; color: white; font-size: 10px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
-
-        .bg-ws { background: #25D366; } 
-        .bg-map { background: #4285F4; } 
-        .bg-edit { background: #78909c; } 
-        .bg-fin { background: var(--rojo); } 
-        .bg-del { background: #333; }
-
-        .badge-unidad { background: var(--azul); color: white; padding: 2px 8px; border-radius: 5px; font-size: 0.9em; }
+        .finalizado { border-left-color: #9e9e9e; opacity: 0.7; }
+        .urgente-blink { border-left-color: #ff0000 !important; background-color: #ffebee !important; animation: blinker 1.2s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0.6; } }
+        .acciones { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 10px; }
+        .btn-acc { padding: 10px 2px; border: none; border-radius: 5px; color: white; font-size: 9px; font-weight: bold; cursor: pointer; }
+        .bg-ws { background: #25D366; } .bg-map { background: #4285F4; } .bg-edit { background: #78909c; } .bg-fin { background: var(--rojo); } .bg-del { background: #333; }
     </style>
 </head>
-<body>
+<body onclick="desbloquearAudio()">
 
 <audio id="audioAlerta" src="alerta.mp3" preload="auto"></audio>
 
 <div class="header">
-    <h2 style="margin:5px 0">TAXI PLATINO</h2>
+    <h2 style="margin:0">TAXI PLATINO</h2>
     <small>CENTRAL MINATITLÁN</small>
 </div>
 
 <div class="form-card" id="formulario">
-    <h3 id="form-title" style="margin-top:0; color:var(--azul)">Agendar Servicio</h3>
     <input type="hidden" id="edit-id">
-    <input type="text" id="nombre" placeholder="Nombre del Cliente" autocomplete="off">
+    <input type="text" id="nombre" placeholder="Nombre del Cliente">
     <input type="tel" id="telefono" placeholder="📱 WhatsApp (10 dígitos)" maxlength="10">
     <input type="text" id="domicilio" placeholder="📍 Domicilio de Origen">
     <input type="datetime-local" id="fecha">
@@ -80,220 +48,161 @@
         <option value="no">Servicio Único</option>
         <option value="diario">🔁 Repetir cada 24h</option>
     </select>
-    
-    <button class="btn-main btn-group-ws" onclick="procesarServicio(true)" id="btn-save-full">
-        💾 GUARDAR Y NOTIFICAR GRUPO
-    </button>
-    
+    <button class="btn-main" style="background:#25D366" onclick="procesarServicio(true)">💾 GUARDAR Y NOTIFICAR GRUPO</button>
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
         <button class="btn-main btn-excel" onclick="exportarExcel()">📊 EXCEL</button>
         <button class="btn-main btn-clear" onclick="borradorRapido()">🧹 LIMPIAR</button>
     </div>
-    
-    <button id="btn-cancel" style="display:none; background:none; border:none; color:red; width:100%; margin-top:15px; font-weight:bold; cursor:pointer;" onclick="cancelarEdicion()">✖ CANCELAR EDICIÓN</button>
+    <button id="btn-cancel" style="display:none; color:red; width:100%; margin-top:10px; border:none; background:none; font-weight:bold;" onclick="cancelarEdicion()">✖ CANCELAR EDICIÓN</button>
 </div>
 
 <div id="lista"></div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { 
-    getFirestore, collection, deleteDoc, doc, setDoc, onSnapshot, query, orderBy 
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, deleteDoc, doc, setDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-const firebaseConfig = {
-    apiKey: "AIzaSyCV432quSSYBQnvyVNoc7rXhw99x7UlMHg",
-    authDomain: "taxi-platino-95ea3.firebaseapp.com",
-    projectId: "taxi-platino-95ea3",
-    storageBucket: "taxi-platino-95ea3.firebasestorage.app",
-    messagingSenderId: "981982270950",
-    appId: "1:981982270950:web:b7d0b4ca9ab03cafd97227"
-};
+    const firebaseConfig = {
+        apiKey: "AIzaSyCV432quSSYBQnvyVNoc7rXhw99x7UlMHg",
+        authDomain: "taxi-platino-95ea3.firebaseapp.com",
+        projectId: "taxi-platino-95ea3",
+        storageBucket: "taxi-platino-95ea3.firebasestorage.app",
+        messagingSenderId: "981982270950",
+        appId: "1:981982270950:web:b7d0b4ca9ab03cafd97227"
+    };
 
-const app = initializeApp(firebaseConfig);
-const dbFirebase = getFirestore(app);
-const auth = getAuth(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
 
-// Exponer a nivel global para el resto de scripts
-window.dbFirebase = dbFirebase;
-window.fb = { collection, deleteDoc, doc, setDoc, onSnapshot, query, orderBy };
-window.authStore = { auth, signInWithEmailAndPassword, onAuthStateChanged, signOut };
+    window.db = db; window.fb = { collection, deleteDoc, doc, setDoc, onSnapshot, query, orderBy };
+    
+    onAuthStateChanged(auth, user => { 
+        if(user) { inicializarApp(); } else { login(); } 
+    });
 
-// Inicializar escucha de datos después de login
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        inicializarEscucha();
-    } else {
-        mostrarPantallaLogin();
+    async function login() {
+        const { value: v } = await Swal.fire({
+            title: 'ACCESO',
+            html: '<input id="u" class="swal2-input" placeholder="Correo"><input id="p" type="password" class="swal2-input" placeholder="Pass">',
+            preConfirm: () => [document.getElementById('u').value, document.getElementById('p').value],
+            allowOutsideClick: false
+        });
+        if(v) signInWithEmailAndPassword(auth, v[0], v[1]).catch(() => login());
     }
-});
 </script>
 
 <script>
-let servicios = [];
-let yaSonó = false;
-const audio = document.getElementById('audioAlerta');
+    let servicios = [];
+    let audioHabilitado = false;
+    const audio = document.getElementById('audioAlerta');
 
-function escapeHTML(text){
-    if(!text) return '';
-    return text.toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-}
-
-async function mostrarPantallaLogin(){
-    const { value: formValues } = await Swal.fire({
-        title:'🔑 ACCESO TAXI PLATINO',
-        html:'<input id="swal-input1" class="swal2-input" placeholder="Correo">' +
-             '<input id="swal-input2" type="password" class="swal2-input" placeholder="Contraseña">',
-        focusConfirm:false,
-        allowOutsideClick:false,
-        confirmButtonText:'Entrar',
-        confirmButtonColor:'#1a2b4c',
-        preConfirm:()=>[document.getElementById('swal-input1').value, document.getElementById('swal-input2').value]
-    });
-
-    if(formValues){
-        try{
-            await window.authStore.signInWithEmailAndPassword(window.authStore.auth, formValues[0], formValues[1]);
-        } catch(e){
-            Swal.fire('Error','Credenciales incorrectas','error').then(()=> mostrarPantallaLogin());
+    function desbloquearAudio() {
+        if(!audioHabilitado) {
+            audio.play().then(() => { audio.pause(); audioHabilitado = true; });
         }
     }
-}
 
-function inicializarEscucha() {
-    const q = window.fb.query(window.fb.collection(window.dbFirebase, "servicios"), window.fb.orderBy("fecha", "asc"));
-    window.fb.onSnapshot(q, (snapshot) => {
-        servicios = [];
-        snapshot.forEach(doc => servicios.push({ ...doc.data(), id: doc.id }));
-        render();
-    });
-}
-
-function render(){
-    const lista = document.getElementById('lista');
-    lista.innerHTML = '<h3 style="margin-left:5px; color:#1a2b4c; border-bottom: 2px solid #ccc; padding-bottom:5px;">AGENDA DE SERVICIOS</h3>';
-    let hayUrgentes = false;
-    const ahora = Date.now();
-    const quinceMin = ahora + (15 * 60000);
-
-    if(servicios.length === 0){
-        lista.innerHTML += '<p style="text-align:center; color:#999; margin-top:20px;">No hay servicios programados</p>';
-        return;
+    function inicializarApp() {
+        const q = window.fb.query(window.fb.collection(window.db, "servicios"), window.fb.orderBy("fecha", "asc"));
+        window.fb.onSnapshot(q, snap => {
+            servicios = [];
+            snap.forEach(d => servicios.push({ ...d.data(), id: d.id }));
+            render();
+        });
     }
 
-    servicios.forEach(s => {
-        const f = new Date(s.fecha);
-        const esUrgente = (s.estado === 'pendiente' && s.fecha <= quinceMin && s.fecha >= ahora - 600000);
-        if(esUrgente) hayUrgentes = true;
+    function render() {
+        const lista = document.getElementById('lista');
+        lista.innerHTML = "";
+        const ahora = Date.now();
+        const quinceMin = ahora + (15 * 60 * 1000);
+        let hayUrgente = false;
 
-        const div = document.createElement('div');
-        div.className = `servicio-card ${s.estado} ${esUrgente ? 'urgente-blink' : ''}`;
+        servicios.forEach(s => {
+            const esUrgente = (s.estado === 'pendiente' && s.fecha <= quinceMin && s.fecha >= ahora - 600000);
+            if(esUrgente) hayUrgente = true;
+
+            const div = document.createElement('div');
+            div.className = `servicio-card ${s.estado} ${esUrgente ? 'urgente-blink' : ''}`;
+            div.innerHTML = `
+                <small>📅 ${new Date(s.fecha).toLocaleString()}</small><br>
+                <b>${s.nombre.toUpperCase()}</b><br>
+                📍 ${s.domicilio}<br>
+                🚕 Unidad: ${s.unidad || '---'}
+                <div class="acciones">
+                    <button class="btn-acc bg-ws" onclick="asignarUnidad('${s.id}', '${s.telefono}')">TAXI</button>
+                    <button class="btn-acc bg-map" onclick="window.open('https://www.google.com/maps/search/${encodeURIComponent(s.domicilio + ' Minatitlan')}')">MAPA</button>
+                    <button class="btn-acc bg-edit" onclick="editar('${s.id}')">EDIT</button>
+                    <button class="btn-acc bg-fin" onclick="finalizar('${s.id}')">FIN</button>
+                    <button class="btn-acc bg-del" onclick="eliminar('${s.id}')">BORRAR</button>
+                </div>
+            `;
+            lista.appendChild(div);
+        });
+
+        if(hayUrgente && audioHabilitado) audio.play();
+    }
+
+    async function procesarServicio(notificar) {
+        const id = document.getElementById('edit-id').value || Date.now().toString();
+        const data = {
+            nombre: document.getElementById('nombre').value,
+            telefono: document.getElementById('telefono').value,
+            domicilio: document.getElementById('domicilio').value,
+            fecha: new Date(document.getElementById('fecha').value).getTime(),
+            recurrencia: document.getElementById('recurrencia').value,
+            estado: 'pendiente',
+            unidad: 'S/A'
+        };
+        if(!data.nombre || !data.telefono) return Swal.fire('Error','Faltan datos','error');
         
-        div.innerHTML = `
-            <span class="time-tag">📅 ${f.toLocaleDateString()} - ⏰ ${f.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
-            <strong style="font-size:1.15em; display:block;">${escapeHTML(s.nombre.toUpperCase())}</strong> 
-            ${s.recurrencia === 'diario' ? '<span class="recurrente-tag">🔁 DIARIO</span>' : ''}
-            <div style="font-size:0.95em; color:#444;">📞 ${escapeHTML(s.telefono)}</div>
-            <div style="font-size:0.95em; color:#222;">📍 <b>${escapeHTML(s.domicilio)}</b></div>
-            <div style="margin-top:8px;"><span class="badge-unidad">🚕 Unidad: ${escapeHTML(s.unidad || 'S/A')}</span></div>
-            <div class="acciones">
-                <button class="btn-acc bg-ws" onclick="asignarUnidad('${s.id}')">Taxi</button>
-                <button class="btn-acc bg-map" onclick="window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent('${s.domicilio} Minatitlan'))">Mapa</button>
-                <button class="btn-acc bg-edit" onclick="editar('${s.id}')">Edit</button>
-                ${s.estado !== 'finalizado' ? `<button class="btn-acc bg-fin" onclick="finalizar('${s.id}')">FIN</button>` : ''}
-                <button class="btn-acc bg-del" onclick="eliminar('${s.id}')">Borrar</button>
-            </div>
-        `;
-        lista.appendChild(div);
-    });
-
-    if(hayUrgentes && !yaSonó){ audio.play().catch(()=>console.log("Audio interactivo")); yaSonó=true; }
-    if(!hayUrgentes) yaSonó = false;
-}
-
-// --- FUNCIONES DE ACCIÓN ---
-
-async function procesarServicio(notificarWS = false) {
-    const id = document.getElementById('edit-id').value;
-    const nombre = document.getElementById('nombre').value;
-    const telefono = document.getElementById('telefono').value;
-    const domicilio = document.getElementById('domicilio').value;
-    const fechaInput = document.getElementById('fecha').value;
-    const recurrencia = document.getElementById('recurrencia').value;
-
-    if(!nombre || !telefono || !domicilio || !fechaInput) return Swal.fire('Error','Completa los campos','warning');
-
-    const servicio = {
-        nombre, telefono, domicilio,
-        fecha: new Date(fechaInput).getTime(),
-        recurrencia,
-        estado: 'pendiente',
-        unidad: 'S/A'
-    };
-
-    const docId = id || Date.now().toString();
-    await window.fb.setDoc(window.fb.doc(window.dbFirebase, "servicios", docId), servicio, { merge: true });
-    
-    if(notificarWS) {
-        const msj = `🚕 *NUEVO SERVICIO*%0A👤 *Cliente:* ${nombre}%0A📍 *Origen:* ${domicilio}%0A⏰ *Hora:* ${new Date(fechaInput).toLocaleString()}`;
-        window.open(`https://wa.me/?text=${msj}`, '_blank');
+        await window.fb.setDoc(window.fb.doc(window.db, "servicios", id), data, { merge: true });
+        if(notificar) window.open(`https://wa.me/?text=🚕 NUEVO: ${data.domicilio} - ${data.nombre}`, '_blank');
+        borradorRapido();
     }
-    
-    borradorRapido();
-    cancelarEdicion();
-}
 
-async function asignarUnidad(id) {
-    const { value: unidad } = await Swal.fire({
-        title: 'Asignar Taxi',
-        input: 'text',
-        inputPlaceholder: 'Número de unidad',
-        showCancelButton: true
-    });
-    if (unidad) {
-        await window.fb.setDoc(window.fb.doc(window.dbFirebase, "servicios", id), { unidad, estado: 'en-proceso' }, { merge: true });
+    async function asignarUnidad(id, tel) {
+        const { value: uni } = await Swal.fire({ title: 'Unidad:', input: 'text' });
+        if(uni) {
+            await window.fb.setDoc(window.fb.doc(window.db, "servicios", id), { unidad: uni, estado: 'en-proceso' }, { merge: true });
+            // Confirmación al cliente
+            window.open(`https://wa.me/52${tel}?text=Taxi Platino informa: La unidad ${uni} va en camino a su domicilio.`, '_blank');
+        }
     }
-}
 
-async function finalizar(id) {
-    await window.fb.setDoc(window.fb.doc(window.dbFirebase, "servicios", id), { estado: 'finalizado' }, { merge: true });
-}
+    function borradorRapido() {
+        document.getElementById('edit-id').value = "";
+        document.getElementById('nombre').value = "";
+        document.getElementById('telefono').value = "";
+        document.getElementById('domicilio').value = "";
+        document.getElementById('fecha').value = "";
+    }
 
-async function eliminar(id) {
-    const confirm = await Swal.fire({ title: '¿Eliminar?', showCancelButton: true, confirmButtonColor: '#d33' });
-    if(confirm.isConfirmed) await window.fb.deleteDoc(window.fb.doc(window.dbFirebase, "servicios", id));
-}
+    async function finalizar(id) { await window.fb.setDoc(window.fb.doc(window.db, "servicios", id), { estado: 'finalizado' }, { merge: true }); }
+    async function eliminar(id) { if(confirm('¿Borrar?')) await window.fb.deleteDoc(window.fb.doc(window.db, "servicios", id)); }
+    
+    function editar(id) {
+        const s = servicios.find(x => x.id === id);
+        document.getElementById('edit-id').value = s.id;
+        document.getElementById('nombre').value = s.nombre;
+        document.getElementById('telefono').value = s.telefono;
+        document.getElementById('domicilio').value = s.domicilio;
+        document.getElementById('fecha').value = new Date(s.fecha).toISOString().slice(0,16);
+        document.getElementById('btn-cancel').style.display = "block";
+    }
 
-function editar(id) {
-    const s = servicios.find(i => i.id === id);
-    document.getElementById('edit-id').value = s.id;
-    document.getElementById('nombre').value = s.nombre;
-    document.getElementById('telefono').value = s.telefono;
-    document.getElementById('domicilio').value = s.domicilio;
-    document.getElementById('fecha').value = new Date(s.fecha).toISOString().slice(0,16);
-    document.getElementById('btn-cancel').style.display = "block";
-    window.scrollTo(0,0);
-}
+    function exportarExcel() {
+        const ws = XLSX.utils.json_to_sheet(servicios);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Servicios");
+        XLSX.writeFile(wb, "TaxiPlatino.xlsx");
+    }
 
-function cancelarEdicion() {
-    document.getElementById('edit-id').value = "";
-    document.getElementById('btn-cancel').style.display = "none";
-    document.getElementById('form-title').innerText = "Agendar Servicio";
-}
-
-function borradorRapido() {
-    document.querySelectorAll('input').forEach(i => i.value = "");
-}
-
-function exportarExcel() {
-    const ws = XLSX.utils.json_to_sheet(servicios);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Servicios");
-    XLSX.writeFile(wb, "Reporte_Platino.xlsx");
-}
-
-if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js');
+    }
 </script>
 </body>
 </html>
