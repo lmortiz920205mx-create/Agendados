@@ -1,21 +1,15 @@
 {
-  "name": "Taxi Platino Admin",
-  "short_name": "Agendados",
-  "start_url": "./index.html",
+  "name": "Taxi Platino Central",
+  "short_name": "Platino",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#1a2b4c",
   "theme_color": "#1a2b4c",
-  "description": "Panel de Control Taxi Platino",
   "icons": [
     {
-      "src": "./icono.png",
-      "sizes": "192x192",
-      "type": "image/png",
-    },
-    {
-      "src": "./icono.png",
+      "src": "icono.png",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/png"
     }
   ]
 }
