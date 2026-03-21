@@ -5,8 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Taxi Platino Admin</title>
     <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="favicon.ico">
     <meta name="theme-color" content="#1a2b4c">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Taxi Platino">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
@@ -80,9 +84,20 @@
     window.db = db; 
     window.fb = { collection, deleteDoc, doc, setDoc, onSnapshot, query, orderBy };
 
-    onAuthStateChanged(auth, user => { 
-        if(user) { inicializarApp(); } else { login(); } 
-    });
+    import { getIdTokenResult } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+onAuthStateChanged(auth, async user => { 
+    if (user) { 
+        const token = await getIdTokenResult(user);
+        window.userRole = token.claims.role || "operador";
+
+        console.log("ROL:", window.userRole);
+
+        inicializarApp(); 
+    } else { 
+        login(); 
+    } 
+});
 
     async function login() {
         const { value: v } = await Swal.fire({
@@ -148,7 +163,10 @@
                     <button class="btn-acc bg-map" onclick="verMapa('${s.domicilio}')">MAPA</button>
                     <button class="btn-acc bg-edit" onclick="editar('${s.id}')">EDIT</button>
                     <button class="btn-acc bg-fin" onclick="finalizar('${s.id}')">FIN</button>
-                    <button class="btn-acc bg-del" onclick="eliminar('${s.id}')">BORRAR</button>
+                    ${window.userRole === 'admin' 
+  ? `<button class="btn-acc bg-del" onclick="eliminar('${s.id}')">BORRAR</button>` 
+  : ''
+}
                 </div>
             `;
             lista.appendChild(div);
@@ -244,6 +262,24 @@
     }
 
     async function eliminar(id) { 
+
+    if (window.userRole !== 'admin') {
+        return Swal.fire('Acceso denegado', 'Solo administradores pueden eliminar', 'error');
+    }
+
+    const result = await Swal.fire({
+        title: '¿Eliminar?',
+        text: "Esta acción no se puede deshacer",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Sí, borrar'
+    });
+
+    if(result.isConfirmed) {
+        await window.fb.deleteDoc(window.fb.doc(window.db, "servicios", id)); 
+    }
+}
         const result = await Swal.fire({
             title: '¿Eliminar?',
             text: "Esta acción no se puede deshacer",
