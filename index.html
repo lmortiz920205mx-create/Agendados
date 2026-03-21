@@ -159,7 +159,7 @@
         if(!data.nombre || !data.telefono) return Swal.fire('Error','Faltan datos','error');
         
         await window.fb.setDoc(window.fb.doc(window.db, "servicios", id), data, { merge: true });
-        if(notificar) window.open(`https://wa.me/?text=🚕 NUEVO: ${data.domicilio} - ${data.nombre}`, '_blank');
+        if(notificar) window.open(`https://wa.me/?text=`*🆕 NUEVO SERVICIO*\n\n👤 *Cliente:* ${s.nombre.toUpperCase()}\n📞 *Tel:* ${s.telefono}\n📅 *Fecha:* ${fechaFmt}\n⏰ *Hora:* ${horaFmt}\n📍 *Origen:* ${s.domicilio}\n🔁 *Recurrente:* ${s.recurrencia === 'diario' ? 'SÍ' : 'NO'}`;
         borradorRapido();
     }
 
