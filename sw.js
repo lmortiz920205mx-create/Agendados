@@ -1,4 +1,4 @@
-const CACHE_NAME = 'taxi-platino-v1.4';
+const CACHE_NAME = 'taxi-platino-v1';
 const urlsToCache = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', event => {
