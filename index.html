@@ -1,201 +1,281 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Taxi Platino Admin</title>
-
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#1a2b4c">
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-<style>
-:root { --azul:#1a2b4c; --plata:#f4f4f4; --rojo:#d32f2f; --amarillo:#fbc02d; --verde:#388e3c; }
-body { font-family:sans-serif; background:var(--plata); margin:0; padding:15px; }
-
-.header { text-align:center; background:var(--azul); color:#fff; padding:15px; margin:-15px -15px 20px; }
-
-.form-card, .servicio-card {
-    background:#fff; padding:15px; border-radius:10px; margin-bottom:15px;
-}
-
-input, select {
-    width:100%; padding:12px; margin:8px 0;
-}
-
-.btn-main {
-    width:100%; padding:14px; background:var(--azul); color:#fff; border:none;
-}
-
-.servicio-card { border-left:8px solid; }
-.pendiente { border-color:var(--amarillo); }
-.en-proceso { border-color:var(--verde); }
-.finalizado { border-color:#999; opacity:0.6; }
-
-.urgente { background:#ffebee; animation:blink 1s infinite; }
-@keyframes blink { 50% { opacity:0.6; } }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Taxi Platino Admin</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a2b4c">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root { --azul: #1a2b4c; --plata: #f4f4f4; --rojo: #d32f2f; --amarillo: #fbc02d; --verde: #388e3c; --texto: #333; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--plata); margin: 0; padding: 15px; padding-bottom: 80px; color: var(--texto); }
+        .header { text-align: center; background: var(--azul); color: white; padding: 15px; border-radius: 0 0 15px 15px; margin: -15px -15px 20px -15px; }
+        .form-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 25px; border-top: 5px solid var(--azul); }
+        input, select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
+        .btn-main { background: var(--azul); color: white; border: none; padding: 16px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        .btn-excel { background: #1D6F42; }
+        .btn-clear { background: #607d8b; }
+        .servicio-card { background: white; margin-bottom: 15px; border-radius: 12px; padding: 18px; border-left: 10px solid; box-shadow: 0 3px 10px rgba(0,0,0,0.08); position: relative; }
+        .pendiente { border-left-color: var(--amarillo); }
+        .en-proceso { border-left-color: var(--verde); background: #f9fff9; }
+        .finalizado { border-left-color: #9e9e9e; opacity: 0.7; }
+        .urgente-blink { border-left-color: #ff0000 !important; background-color: #ffebee !important; animation: blinker 1.2s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0.6; } }
+        .acciones { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 10px; }
+        .btn-acc { padding: 10px 2px; border: none; border-radius: 5px; color: white; font-size: 9px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
+        .bg-ws { background: #25D366; } .bg-map { background: #4285F4; } .bg-edit { background: #78909c; } .bg-fin { background: var(--rojo); } .bg-del { background: #333; }
+    </style>
 </head>
-
 <body onclick="desbloquearAudio()">
 
-<audio id="audioAlerta" src="alerta.mp3"></audio>
+<audio id="audioAlerta" src="alerta.mp3" preload="auto" loop></audio>
 
 <div class="header">
-<h2>TAXI PLATINO</h2>
+    <h2 style="margin:0">TAXI PLATINO</h2>
+    <small>CENTRAL MINATITLÁN</small>
 </div>
 
-<div class="form-card">
-<input type="hidden" id="edit-id">
-
-<input id="nombre" placeholder="Cliente">
-<input id="telefono" placeholder="Teléfono">
-<input id="domicilio" placeholder="Domicilio">
-<input type="datetime-local" id="fecha">
-
-<button class="btn-main" onclick="procesarServicio(true)">GUARDAR</button>
-<button class="btn-main" onclick="exportarExcel()">EXCEL</button>
+<div class="form-card" id="formulario">
+    <input type="hidden" id="edit-id">
+    <input type="text" id="nombre" placeholder="Nombre del Cliente">
+    <input type="tel" id="telefono" placeholder="📱 WhatsApp (10 dígitos)" maxlength="10">
+    <input type="text" id="domicilio" placeholder="📍 Domicilio de Origen">
+    <input type="datetime-local" id="fecha">
+    <select id="recurrencia">
+        <option value="no">Servicio Único</option>
+        <option value="diario">🔁 Repetir cada 24h</option>
+    </select>
+    <button class="btn-main" style="background:#25D366" onclick="procesarServicio(true)">💾 GUARDAR Y NOTIFICAR GRUPO</button>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <button class="btn-main btn-excel" onclick="exportarExcel()">📊 EXCEL</button>
+        <button class="btn-main btn-clear" onclick="borradorRapido()">🧹 LIMPIAR</button>
+    </div>
+    <button id="btn-cancel" style="display:none; color:red; width:100%; margin-top:10px; border:none; background:none; font-weight:bold; cursor:pointer;" onclick="cancelarEdicion()">✖ CANCELAR EDICIÓN</button>
 </div>
 
 <div id="lista"></div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, deleteDoc, doc, setDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-const firebaseConfig = {
-apiKey: "TU_API_KEY",
-authDomain: "TU_AUTH",
-projectId: "TU_ID"
-};
+    const firebaseConfig = {
+        apiKey: "AIzaSyCV432quSSYBQnvyVNoc7rXhw99x7UlMHg",
+        authDomain: "taxi-platino-95ea3.firebaseapp.com",
+        projectId: "taxi-platino-95ea3",
+        storageBucket: "taxi-platino-95ea3.firebasestorage.app",
+        messagingSenderId: "981982270950",
+        appId: "1:981982270950:web:b7d0b4ca9ab03cafd97227"
+    };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
 
-window.db = db;
-window.fb = { collection, doc, setDoc, deleteDoc, onSnapshot, query, orderBy };
+    // Exponer a global para los botones HTML
+    window.db = db; 
+    window.fb = { collection, deleteDoc, doc, setDoc, onSnapshot, query, orderBy };
 
-onAuthStateChanged(auth, user => {
-    if(user) init();
-    else login();
-});
-
-async function login(){
-    const { value } = await Swal.fire({
-        title:'Login',
-        html:`<input id="u" class="swal2-input"><input id="p" type="password" class="swal2-input">`,
-        preConfirm:()=>[u.value,p.value]
+    onAuthStateChanged(auth, user => { 
+        if(user) { inicializarApp(); } else { login(); } 
     });
 
-    if(value){
-        signInWithEmailAndPassword(auth,value[0],value[1])
-        .catch(()=>Swal.fire('Error','Credenciales incorrectas','error'));
+    async function login() {
+        const { value: v } = await Swal.fire({
+            title: 'ACCESO TAXI PLATINO',
+            html: '<input id="u" class="swal2-input" placeholder="Correo"><input id="p" type="password" class="swal2-input" placeholder="Contraseña">',
+            preConfirm: () => [document.getElementById('u').value, document.getElementById('p').value],
+            allowOutsideClick: false
+        });
+        if(v) signInWithEmailAndPassword(auth, v[0], v[1]).catch(() => {
+            Swal.fire('Error', 'Credenciales incorrectas', 'error').then(login);
+        });
     }
-}
 </script>
 
 <script>
-let servicios = [];
-const audio = document.getElementById('audioAlerta');
-let audioOK = false;
+    let servicios = [];
+    let audioHabilitado = false;
+    const audio = document.getElementById('audioAlerta');
 
-function desbloquearAudio(){
-    if(!audioOK){
-        audio.play().then(()=>{audio.pause(); audioOK=true;}).catch(()=>{});
-    }
-}
-
-function init(){
-    const q = fb.query(fb.collection(db,"servicios"), fb.orderBy("fecha","asc"));
-
-    fb.onSnapshot(q, snap=>{
-        servicios=[];
-        snap.forEach(d=>servicios.push({...d.data(),id:d.id}));
-        render();
-    });
-}
-
-function render(){
-    const lista = document.getElementById('lista');
-    lista.innerHTML="";
-
-    const ahora = Date.now();
-    const limite = ahora + (15*60*1000);
-
-    servicios.forEach(s=>{
-        const urgente = s.fecha >= ahora && s.fecha <= limite;
-
-        const div = document.createElement('div');
-        div.className = `servicio-card ${s.estado} ${urgente?'urgente':''}`;
-
-        div.innerHTML = `
-        <b>${s.nombre}</b><br>
-        📍 ${s.domicilio}<br>
-        ⏰ ${new Date(s.fecha).toLocaleString()}
-        `;
-
-        lista.appendChild(div);
-    });
-
-    if(audioOK) audio.play().catch(()=>{});
-}
-
-async function procesarServicio(notificar){
-
-    const data = {
-        nombre: nombre.value,
-        telefono: telefono.value,
-        domicilio: domicilio.value,
-        fecha: new Date(fecha.value).getTime(),
-        estado:'pendiente'
-    };
-
-    if(!data.nombre || !/^\d{10}$/.test(data.telefono)){
-        return Swal.fire('Error','Datos inválidos','error');
+    function desbloquearAudio() {
+        if(!audioHabilitado) {
+            audio.play().then(() => { 
+                audio.pause(); 
+                audio.currentTime = 0;
+                audioHabilitado = true; 
+            }).catch(e => console.log("Esperando interacción..."));
+        }
     }
 
-    const id = edit-id.value || Date.now().toString();
-
-    await fb.setDoc(fb.doc(db,"servicios",id), data);
-
-    if(notificar){
-
-        const fechaObj = new Date(data.fecha);
-
-        const mensaje =
-`🚕 NUEVO SERVICIO
-👤 Cliente: ${data.nombre}
-📍 Origen: ${data.domicilio}
-⏰ Hora: ${fechaObj.toLocaleString()}`;
-
-        window.open(`https://wa.me/?text=${encodeURIComponent(mensaje)}`, '_blank');
+    function inicializarApp() {
+        const q = window.fb.query(window.fb.collection(window.db, "servicios"), window.fb.orderBy("fecha", "asc"));
+        window.fb.onSnapshot(q, snap => {
+            servicios = [];
+            snap.forEach(d => servicios.push({ ...d.data(), id: d.id }));
+            render();
+        });
     }
 
-    limpiar();
-}
+    function render() {
+        const lista = document.getElementById('lista');
+        lista.innerHTML = "";
+        const ahora = Date.now();
+        const quinceMin = ahora + (15 * 60 * 1000);
+        let hayUrgente = false;
 
-function limpiar(){
-    nombre.value="";
-    telefono.value="";
-    domicilio.value="";
-    fecha.value="";
-}
+        servicios.forEach(s => {
+            // Un servicio es urgente si es pendiente y faltan 15 min o menos (y no ha pasado más de 10 min de retraso)
+            const esUrgente = (s.estado === 'pendiente' && s.fecha <= quinceMin && s.fecha >= ahora - 600000);
+            if(esUrgente) hayUrgente = true;
 
-function exportarExcel(){
-    const ws = XLSX.utils.json_to_sheet(servicios);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Servicios");
-    XLSX.writeFile(wb, "TaxiPlatino.xlsx");
-}
+            const fechaObj = new Date(s.fecha);
+            const fechaTxt = fechaObj.toLocaleString('es-MX', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
 
-if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
-}
+            const div = document.createElement('div');
+            div.className = `servicio-card ${s.estado} ${esUrgente ? 'urgente-blink' : ''}`;
+            div.innerHTML = `
+                <small>📅 ${fechaTxt}</small><br>
+                <b>${s.nombre.toUpperCase()}</b><br>
+                📍 ${s.domicilio}<br>
+                🚕 Unidad: <b>${s.unidad || 'S/A'}</b>
+                <div class="acciones">
+                    <button class="btn-acc bg-ws" onclick="asignarUnidad('${s.id}', '${s.telefono}')">TAXI</button>
+                    <button class="btn-acc bg-map" onclick="verMapa('${s.domicilio}')">MAPA</button>
+                    <button class="btn-acc bg-edit" onclick="editar('${s.id}')">EDIT</button>
+                    <button class="btn-acc bg-fin" onclick="finalizar('${s.id}')">FIN</button>
+                    <button class="btn-acc bg-del" onclick="eliminar('${s.id}')">BORRAR</button>
+                </div>
+            `;
+            lista.appendChild(div);
+        });
+
+        if(hayUrgente && audioHabilitado) {
+            audio.play().catch(e => console.log("Error audio"));
+        } else {
+            audio.pause();
+        }
+    }
+
+    async function procesarServicio(notificar) {
+        const id = document.getElementById('edit-id').value || Date.now().toString();
+        const nombre = document.getElementById('nombre').value;
+        const telefono = document.getElementById('telefono').value;
+        const domicilio = document.getElementById('domicilio').value;
+        const fechaVal = document.getElementById('fecha').value;
+
+        if(!nombre || !fechaVal) return Swal.fire('Error','Nombre y Fecha son obligatorios','error');
+        
+        const fechaMs = new Date(fechaVal).getTime();
+
+        const data = {
+            nombre: nombre,
+            telefono: telefono,
+            domicilio: domicilio,
+            fecha: fechaMs,
+            recurrencia: document.getElementById('recurrencia').value,
+            estado: 'pendiente',
+            unidad: 'S/A'
+        };
+        
+        await window.fb.setDoc(window.fb.doc(window.db, "servicios", id), data, { merge: true });
+
+        if(notificar) {
+            const f = new Date(fechaMs);
+            const msg = `*🆕 NUEVO SERVICIO*\n\n👤 *Cliente:* ${nombre.toUpperCase()}\n📞 *Tel:* ${telefono}\n📅 *Fecha:* ${f.toLocaleDateString()}\n⏰ *Hora:* ${f.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}\n📍 *Origen:* ${domicilio}\n🔁 *Recurrente:* ${data.recurrencia === 'diario' ? 'SÍ' : 'NO'}`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+        
+        borradorRapido();
+        Swal.fire('Guardado', 'Servicio registrado correctamente', 'success');
+    }
+
+    async function asignarUnidad(id, tel) {
+        const { value: uni } = await Swal.fire({ 
+            title: 'Asignar Unidad:', 
+            input: 'text',
+            inputPlaceholder: 'Ej. 124'
+        });
+        
+        if(uni) {
+            await window.fb.setDoc(window.fb.doc(window.db, "servicios", id), { unidad: uni, estado: 'en-proceso' }, { merge: true });
+            if(tel && tel.length === 10) {
+                window.open(`https://wa.me/52${tel}?text=${encodeURIComponent('Taxi Platino informa: La unidad ' + uni + ' va en camino a su domicilio.')}`, '_blank');
+            }
+        }
+    }
+
+    function verMapa(dom) {
+        window.open(`https://www.google.com/maps/search/${encodeURIComponent(dom + ' Minatitlán')}`, '_blank');
+    }
+
+    function editar(id) {
+        const s = servicios.find(x => x.id === id);
+        if(!s) return;
+        document.getElementById('edit-id').value = s.id;
+        document.getElementById('nombre').value = s.nombre;
+        document.getElementById('telefono').value = s.telefono;
+        document.getElementById('domicilio').value = s.domicilio;
+        document.getElementById('fecha').value = new Date(s.fecha).toISOString().slice(0,16);
+        document.getElementById('btn-cancel').style.display = "block";
+        window.scrollTo(0,0);
+    }
+
+    function cancelarEdicion() {
+        borradorRapido();
+        document.getElementById('btn-cancel').style.display = "none";
+    }
+
+    function borradorRapido() {
+        document.getElementById('edit-id').value = "";
+        document.getElementById('nombre').value = "";
+        document.getElementById('telefono').value = "";
+        document.getElementById('domicilio').value = "";
+        document.getElementById('fecha').value = "";
+        document.getElementById('btn-cancel').style.display = "none";
+    }
+
+    async function finalizar(id) { 
+        await window.fb.setDoc(window.fb.doc(window.db, "servicios", id), { estado: 'finalizado' }, { merge: true }); 
+    }
+
+    async function eliminar(id) { 
+        const result = await Swal.fire({
+            title: '¿Eliminar?',
+            text: "Esta acción no se puede deshacer",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Sí, borrar'
+        });
+        if(result.isConfirmed) await window.fb.deleteDoc(window.fb.doc(window.db, "servicios", id)); 
+    }
+    
+    function exportarExcel() {
+        const dataParaExcel = servicios.map(s => ({
+            Fecha: new Date(s.fecha).toLocaleString(),
+            Cliente: s.nombre,
+            Telefono: s.telefono,
+            Domicilio: s.domicilio,
+            Unidad: s.unidad,
+            Estado: s.estado
+        }));
+        const ws = XLSX.utils.json_to_sheet(dataParaExcel);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Servicios");
+        XLSX.writeFile(wb, "TaxiPlatino_Reporte.xlsx");
+    }
+
+    // Registro de Service Worker para PWA
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').catch(err => console.log("SW no registrado", err));
+        });
+    }
 </script>
-
 </body>
 </html>
