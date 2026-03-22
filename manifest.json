@@ -1,10 +1,10 @@
 {
-  "name": "Taxi Platino",
-  "short_name": "Taxi",
-  "start_url": "/",
+  "name": "Taxi Platino Admin",
+  "short_name": "Platino",
+  "start_url": "index.html",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#FFD700",
+  "background_color": "#1a2b4c",
+  "theme_color": "#1a2b4c",
   "icons": [
     {
       "src": "icono-192.png",

@@ -14,57 +14,144 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root { --azul: #1a2b4c; --plata: #f4f4f4; --rojo: #d32f2f; --amarillo: #fbc02d; --verde: #388e3c; --texto: #333; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--plata); margin: 0; padding: 15px; padding-bottom: 80px; color: var(--texto); }
-        .header { text-align: center; background: var(--azul); color: white; padding: 15px; border-radius: 0 0 15px 15px; margin: -15px -15px 20px -15px; }
-        .form-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 25px; border-top: 5px solid var(--azul); }
+        
+        /* Estilo base restaurado según captura */
+        body { font-family: 'Segoe UI', sans-serif; background: var(--plata); margin: 0; padding: 15px; padding-bottom: 80px; color: var(--texto); display: none; }
+        
+        .header { 
+            text-align: center; background: var(--azul); color: white; padding: 25px 15px; 
+            border-radius: 0 0 15px 15px; margin: -15px -15px 20px -15px; position: relative;
+        }
+        
+        /* Botones de cabecera restaurados */
+        .header-btn { 
+            position: absolute; top: 50%; transform: translateY(-50%);
+            background: rgba(255,255,255,0.15); border: none; border-radius: 50%; 
+            width: 45px; height: 45px; color: white; cursor: pointer; font-size: 20px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #btnLogout { left: 15px; }
+        #btnSonido { right: 15px; }
+
+        .form-card { 
+            background: white; padding: 20px; border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 25px; border-top: 5px solid var(--azul); 
+        }
+        
         input, select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; box-sizing: border-box; font-size: 16px; }
+        
         .btn-main { background: var(--azul); color: white; border: none; padding: 16px; width: 100%; border-radius: 10px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        
+        /* Colores de botones según captura */
+        .btn-save { background: #2ecc71; }
         .btn-excel { background: #1D6F42; }
-        .btn-clear { background: #607d8b; }
+        .btn-clear { background: #7f8c8d; }
+
+        #searchBar { width: 100%; padding: 15px; border-radius: 15px; border: 1px solid #ddd; margin-bottom: 20px; box-sizing: border-box; font-size: 16px; }
+
         .servicio-card { background: white; margin-bottom: 15px; border-radius: 12px; padding: 18px; border-left: 10px solid; box-shadow: 0 3px 10px rgba(0,0,0,0.08); }
         .pendiente { border-left-color: var(--amarillo); }
         .en-proceso { border-left-color: var(--verde); background: #f9fff9; }
         .finalizado { border-left-color: #9e9e9e; opacity: 0.7; }
-        .urgente-blink { border-left-color: #ff0000 !important; background-color: #ffebee !important; animation: blinker 1.2s linear infinite; }
+        .urgente-blink { border-left-color: #ff0000 !important; background-color: #ffebee !important; animation: blinker 1s linear infinite; }
         @keyframes blinker { 50% { opacity: 0.6; } }
+
         .acciones { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 10px; }
         .btn-acc { padding: 10px 2px; border: none; border-radius: 5px; color: white; font-size: 9px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
         .bg-ws { background: #25D366; } .bg-map { background: #4285F4; } .bg-edit { background: #78909c; } .bg-fin { background: var(--rojo); } .bg-del { background: #333; }
+
+        #loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #1a2b4c;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+.loader-box {
+    text-align: center;
+    animation: fade 1.5s infinite alternate;
+}
+
+@keyframes fade {
+    from { opacity: 0.5; }
+    to { opacity: 1; }
+}
+#app-content {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { 
+        opacity: 0; 
+        transform: translateY(10px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
     </style>
 </head>
 <body id="mainBody">
 
+    <div id="loader">
+    <div class="loader-box">
+        <h2>TAXI PLATINO</h2>
+        <p>Cargando sistema...</p>
+    </div>
+</div>
+
 <audio id="audioAlerta" src="alerta.mp3" preload="auto" loop></audio>
 
-<div class="header">
-    <h2 style="margin:0">TAXI PLATINO</h2>
-    <small>CENTRAL MINATITLÁN</small>
-</div>
-
-<div class="form-card" id="formulario">
-    <input type="hidden" id="edit-id">
-    <input type="text" id="nombre" placeholder="Nombre del Cliente">
-    <input type="tel" id="telefono" placeholder="📱 WhatsApp (10 dígitos)" maxlength="10">
-    <input type="text" id="domicilio" placeholder="📍 Domicilio de Origen">
-    <input type="datetime-local" id="fecha">
-    <select id="recurrencia">
-        <option value="no">Servicio Único</option>
-        <option value="diario">🔁 Repetir cada 24h</option>
-    </select>
-    <button class="btn-main" style="background:#25D366" id="btnGuardar">💾 GUARDAR Y NOTIFICAR</button>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <button class="btn-main btn-excel" id="btnExcel">📊 EXCEL</button>
-        <button class="btn-main btn-clear" id="btnLimpiar">🧹 LIMPIAR</button>
+<div id="app-content">
+    <div class="header">
+        <button id="btnLogout" class="header-btn">🚪</button>
+        <h2 style="margin:0">TAXI PLATINO</h2>
+        <small>CENTRAL MINATITLÁN</small>
+<br>
+<small id="rolUser"></small>
+        <button id="btnSonido" class="header-btn">🔇</button>
     </div>
-    <button id="btn-cancel" style="display:none; color:red; width:100%; margin-top:10px; border:none; background:none; font-weight:bold; cursor:pointer;">✖ CANCELAR EDICIÓN</button>
-</div>
 
-<div id="lista"></div>
+    <div class="form-card" id="formulario">
+        <input type="hidden" id="edit-id">
+        <input type="text" id="nombre" placeholder="Nombre del Cliente">
+        <input type="tel" id="telefono" placeholder="📱 WhatsApp (10 dígitos)" maxlength="10">
+        <input type="text" id="domicilio" placeholder="📍 Domicilio de Origen">
+        <div style="display: flex; gap: 10px;">
+            <input type="datetime-local" id="fecha" style="flex: 2;">
+            <select id="recurrencia" style="flex: 1.5;">
+                <option value="no">Servicio Único</option>
+                <option value="diario">Repetir cada 24h</option>
+            </select>
+        </div>
+        <button class="btn-main btn-save" id="btnGuardar">💾 GUARDAR Y NOTIFICAR</button>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <button class="btn-main btn-excel" id="btnExcel">📊 EXCEL</button>
+            <button class="btn-main btn-clear" id="btnLimpiar">🧹 LIMPIAR</button>
+        </div>
+        <button id="btn-cancel" style="display:none; color:red; width:100%; margin-top:10px; border:none; background:none; font-weight:bold; cursor:pointer;">✖ CANCELAR EDICIÓN</button>
+    </div>
+
+    <input type="text" id="searchBar" placeholder="🔍 Buscar por nombre o domicilio...">
+
+    <div id="lista"></div>
+</div>
 
 <script type="module">
+    window.onerror = function(message, source, lineno, colno, error) {
+    console.error("ERROR GLOBAL:", message);
+};
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, collection, deleteDoc, doc, setDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, getIdTokenResult } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyCV432quSSYBQnvyVNoc7rXhw99x7UlMHg",
@@ -80,172 +167,284 @@
     const auth = getAuth(app);
 
     let servicios = [];
-    let userRole = "operador";
+    let userRole = null;
     let audioHabilitado = false;
-    const audio = document.getElementById('audioAlerta');
+    let audio;
 
-    // --- AUTENTICACIÓN ---
-    onAuthStateChanged(auth, async user => { 
-        if (user) { 
-            const token = await getIdTokenResult(user);
+window.addEventListener('DOMContentLoaded', () => {
+    audio = document.getElementById('audioAlerta');
+});
+
+    // --- CORRECCIÓN DE LOGIN Y VISIBILIDAD ---
+    onAuthStateChanged(auth, async user => {
+
+    const loader = document.getElementById('loader') || { style: {}, innerHTML: "" };
+
+    if (user) {
+        try {
+            // Obtener rol
+            const token = await user.getIdTokenResult();
             userRole = token.claims.role || "operador";
-            inicializarApp(); 
-        } else { 
-            login(); 
-        } 
-    });
+
+            console.log("ROL:", userRole);
+
+            // Mostrar rol
+            document.getElementById('rolUser').innerText =
+                userRole === "admin" ? "👑 ADMIN" : "👨‍💼 OPERADOR";
+
+            // Ocultar loader
+            loader.style.display = "none";
+
+            // Mostrar app
+            document.getElementById('mainBody').style.display = "block";
+
+            inicializarApp();
+
+        } catch (error) {
+            console.error(error);
+            loader.innerHTML = "<p>Error al cargar</p>";
+        }
+
+    } else {
+        // Usuario no logueado
+
+        loader.style.display = "none"; // quitar loader
+
+        document.getElementById('mainBody').style.display = "block";
+
+        login();
+    }
+});
 
     async function login() {
-        const { value: v } = await Swal.fire({
-            title: 'ACCESO TAXI PLATINO',
-            html: '<input id="u" class="swal2-input" placeholder="Correo"><input id="p" type="password" class="swal2-input" placeholder="Contraseña">',
-            preConfirm: () => [document.getElementById('u').value, document.getElementById('p').value],
-            allowOutsideClick: false
-        });
-        if(v) signInWithEmailAndPassword(auth, v[0], v[1]).catch(() => {
-            Swal.fire('Error', 'Credenciales incorrectas', 'error').then(login);
-        });
-    }
+    const { value: v } = await Swal.fire({
+        title: '🔐 ACCESO TAXI PLATINO',
+        html: `
+            <input id="u" class="swal2-input" placeholder="Correo">
+            <input id="p" type="password" class="swal2-input" placeholder="Contraseña">
+        `,
+        confirmButtonText: "Entrar",
+        confirmButtonColor: '#1a2b4c',
+        allowOutsideClick: false,
+        preConfirm: () => {
+            const email = document.getElementById('u').value;
+            const pass = document.getElementById('p').value;
 
-    // --- LÓGICA DE DATOS ---
+            if (!email || !pass) {
+                Swal.showValidationMessage("Completa todos los campos");
+                return false;
+            }
+
+            return [email, pass];
+        }
+    });
+
+    if (v) {
+        try {
+            await signInWithEmailAndPassword(auth, v[0], v[1]);
+        } catch (e) {
+            Swal.fire('Error', 'Credenciales incorrectas', 'error');
+            login();
+        }
+    }
+}
+
+    document.getElementById('btnLogout').onclick = () => {
+        Swal.fire({ title: '¿Cerrar sesión?', showCancelButton: true, confirmButtonColor: '#d33' }).then(r => {
+            if(r.isConfirmed) signOut(auth);
+        });
+    };
+
+    // --- AUDIO ---
+    document.getElementById('btnSonido').onclick = (e) => {
+        audioHabilitado = !audioHabilitado;
+        e.target.innerText = audioHabilitado ? "🔊" : "🔇";
+        if(audioHabilitado) audio.play().then(() => audio.pause());
+        else audio.pause();
+    };
+
     function inicializarApp() {
         const q = query(collection(db, "servicios"), orderBy("fecha", "asc"));
         onSnapshot(q, snap => {
             servicios = [];
             snap.forEach(d => servicios.push({ ...d.data(), id: d.id }));
-            render();
+            render(document.getElementById('searchBar').value.toLowerCase());
         });
     }
 
-    function render() {
+    document.getElementById('searchBar').oninput = (e) => render(e.target.value.toLowerCase());
+
+    function render(filtro = "") {
+    try {
+
         const lista = document.getElementById('lista');
         lista.innerHTML = "";
+
         const ahora = Date.now();
         const quinceMin = ahora + (15 * 60 * 1000);
         let hayUrgente = false;
 
-        servicios.forEach(s => {
+        const filtrados = servicios.filter(s => 
+            (s.nombre || "").toLowerCase().includes(filtro) || 
+            (s.domicilio || "").toLowerCase().includes(filtro)
+        );
+
+        filtrados.forEach(s => {
             const esUrgente = (s.estado === 'pendiente' && s.fecha <= quinceMin && s.fecha >= ahora - 600000);
             if(esUrgente) hayUrgente = true;
 
-            const fechaTxt = new Date(s.fecha).toLocaleString('es-MX', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+            const fechaObj = new Date(s.fecha || Date.now());
+const fechaTxt = fechaObj.toLocaleString('es-MX', {
+    day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'
+});
 
             const div = document.createElement('div');
             div.className = `servicio-card ${s.estado} ${esUrgente ? 'urgente-blink' : ''}`;
+
             div.innerHTML = `
                 <small>📅 ${fechaTxt}</small><br>
-                <b>${s.nombre.toUpperCase()}</b><br>
-                📍 ${s.domicilio}<br>
+                <b>${(s.nombre || "").toUpperCase()}</b><br>
+                📍 ${s.domicilio || ""}
+                <br>
                 🚕 Unidad: <b>${s.unidad || 'S/A'}</b>
                 <div class="acciones">
-                    <button class="btn-acc bg-ws" data-id="${s.id}" data-tel="${s.telefono}">TAXI</button>
-                    <button class="btn-acc bg-map" data-dom="${s.domicilio}">MAPA</button>
+                    <button class="btn-acc bg-ws" data-id="${s.id}" data-tel="${s.telefono || ""}">TAXI</button>
+                    <button class="btn-acc bg-map" data-dom="${s.domicilio || ""}">MAPA</button>
                     <button class="btn-acc bg-edit" data-id="${s.id}">EDIT</button>
                     <button class="btn-acc bg-fin" data-id="${s.id}">FIN</button>
-                    ${userRole === 'admin' ? `<button class="btn-acc bg-del" data-id="${s.id}">BORRAR</button>` : ''}
+                    <button class="btn-acc bg-del" data-id="${s.id}">DEL</button>
                 </div>
             `;
+
             lista.appendChild(div);
         });
 
-        if(hayUrgente && audioHabilitado) {
-            audio.play().catch(() => {});
-        } else {
-            audio.pause();
+        if (audio) {
+            if(hayUrgente && audioHabilitado && !filtro) {
+                audio.play().catch(() => {});
+            } else {
+                audio.pause();
+            }
         }
+
+        aplicarPermisosUI();
+
+    } catch (err) {
+        console.error("Error en render:", err);
     }
+}
 
-    // --- ACCIONES ---
-    async function procesarServicio(notificar) {
+    function aplicarPermisosUI() {
+
+    // Eliminar
+    document.querySelectorAll('.bg-del').forEach(btn => {
+        btn.style.display = (userRole === "admin") ? "block" : "none";
+    });
+
+    // Finalizar
+    document.querySelectorAll('.bg-fin').forEach(btn => {
+        btn.style.display = (userRole === "admin") ? "block" : "none";
+    });
+
+    // Excel
+    document.getElementById('btnExcel').style.display =
+        (userRole === "admin") ? "block" : "none";
+}
+
+    // --- CRUD Y ACCIONES ---
+    document.getElementById('btnGuardar').onclick = async () => {
+        const nom = document.getElementById('nombre').value;
+        const fec = document.getElementById('fecha').value;
+        if(!nom || !fec) return Swal.fire('Error', 'Datos incompletos', 'warning');
+
         const id = document.getElementById('edit-id').value || Date.now().toString();
-        const nombre = document.getElementById('nombre').value;
-        const telefono = document.getElementById('telefono').value;
-        const domicilio = document.getElementById('domicilio').value;
-        const fechaVal = document.getElementById('fecha').value;
-
-        if(!nombre || !fechaVal) return Swal.fire('Error','Nombre y Fecha son obligatorios','error');
-        
-        const fechaMs = new Date(fechaVal).getTime();
         const data = {
-            nombre, telefono, domicilio,
-            fecha: fechaMs,
+            nombre: nom,
+            telefono: document.getElementById('telefono').value,
+            domicilio: document.getElementById('domicilio').value,
+            fecha: new Date(fec).getTime(),
             recurrencia: document.getElementById('recurrencia').value,
             estado: 'pendiente',
             unidad: document.getElementById('edit-id').value ? (servicios.find(x=>x.id===id)?.unidad || 'S/A') : 'S/A'
         };
-        
         await setDoc(doc(db, "servicios", id), data, { merge: true });
-
-        if(notificar) {
-            const f = new Date(fechaMs);
-            const msg = `*🆕 NUEVO SERVICIO*\n\n👤 *Cliente:* ${nombre.toUpperCase()}\n📞 *Tel:* ${telefono}\n📅 *Fecha:* ${f.toLocaleDateString()}\n⏰ *Hora:* ${f.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}\n📍 *Origen:* ${domicilio}`;
-            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-        }
+        
+        // WhatsApp notification
+        const f = new Date(data.fecha);
+        const msg = `*🆕 NUEVO SERVICIO*\n\n👤 *Cliente:* ${nom.toUpperCase()}\n📞 *Tel:* ${data.telefono}\n📅 *Fecha:* ${f.toLocaleDateString()}\n⏰ *Hora:* ${f.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}\n📍 *Origen:* ${data.domicilio}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
         
         borradorRapido();
-        Swal.fire('Guardado', 'Registro exitoso', 'success');
-    }
+    };
 
     function borradorRapido() {
-        ['edit-id', 'nombre', 'telefono', 'domicilio', 'fecha'].forEach(id => document.getElementById(id).value = "");
+        ['edit-id', 'nombre', 'telefono', 'domicilio', 'fecha'].forEach(i => document.getElementById(i).value = "");
         document.getElementById('btn-cancel').style.display = "none";
     }
 
-    // --- EVENT DELEGATION (Para botones dinámicos) ---
     document.addEventListener('click', async e => {
-        const t = e.target;
-        if(t.classList.contains('bg-ws')) {
-            const { value: uni } = await Swal.fire({ title: 'Asignar Unidad:', input: 'text' });
-            if(uni) {
-                await setDoc(doc(db, "servicios", t.dataset.id), { unidad: uni, estado: 'en-proceso' }, { merge: true });
-                if(t.dataset.tel.length === 10) window.open(`https://wa.me/52${t.dataset.tel}?text=${encodeURIComponent('Taxi Platino: Unidad '+uni+' en camino.')}`, '_blank');
+    const t = e.target;
+
+    if(t.classList.contains('bg-ws')) {
+        const { value: u } = await Swal.fire({ title: 'Unidad:', input: 'text' });
+        if(u) {
+            await setDoc(doc(db, "servicios", t.dataset.id), { unidad: u, estado: 'en-proceso' }, { merge: true });
+            if(t.dataset.tel && t.dataset.tel.length === 10) {
+                window.open(`https://wa.me/52${t.dataset.tel}?text=${encodeURIComponent('Taxi Platino: Unidad '+u+' en camino.')}`, '_blank');
             }
         }
-        if(t.classList.contains('bg-map')) {
-            window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.dataset.dom + ' Minatitlán')}`, '_blank');
-        }
-        if(t.classList.contains('bg-edit')) {
-            const s = servicios.find(x => x.id === t.dataset.id);
-            document.getElementById('edit-id').value = s.id;
-            document.getElementById('nombre').value = s.nombre;
-            document.getElementById('telefono').value = s.telefono;
-            document.getElementById('domicilio').value = s.domicilio;
-            document.getElementById('fecha').value = new Date(s.fecha).toISOString().slice(0,16);
-            document.getElementById('btn-cancel').style.display = "block";
-            window.scrollTo(0,0);
-        }
-        if(t.classList.contains('bg-fin')) {
-            await setDoc(doc(db, "servicios", t.dataset.id), { estado: 'finalizado' }, { merge: true });
-        }
-        if(t.classList.contains('bg-del')) {
-            const res = await Swal.fire({ title: '¿Borrar?', showCancelButton: true, confirmButtonColor: '#d33' });
-            if(res.isConfirmed) await deleteDoc(doc(db, "servicios", t.dataset.id));
-        }
-    });
+    }
 
-    // --- INICIALIZADORES DE BOTONES ---
-    document.getElementById('btnGuardar').onclick = () => procesarServicio(true);
+    if(t.classList.contains('bg-map')) {
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t.dataset.dom + ' Minatitlán')}`, '_blank');
+    }
+
+    if(t.classList.contains('bg-edit')) {
+        const s = servicios.find(x => x.id === t.dataset.id);
+if(!s) return;
+        document.getElementById('edit-id').value = s.id;
+        document.getElementById('nombre').value = s.nombre;
+        document.getElementById('telefono').value = s.telefono;
+        document.getElementById('domicilio').value = s.domicilio;
+        const tz = new Date().getTimezoneOffset() * 60000;
+        document.getElementById('fecha').value = new Date(s.fecha - tz).toISOString().slice(0,16);
+        document.getElementById('btn-cancel').style.display = "block";
+        window.scrollTo(0,0);
+    }
+
+    if(t.classList.contains('bg-fin')) {
+
+        if(userRole !== "admin") {
+            return Swal.fire('Acceso denegado');
+        }
+
+        await setDoc(doc(db, "servicios", t.dataset.id),
+            { estado: 'finalizado' },
+            { merge: true }
+        );
+    }
+
+    if(t.classList.contains('bg-del')) {
+
+        if(userRole !== "admin") {
+            return Swal.fire('Acceso denegado');
+        }
+
+        const r = await Swal.fire({ title: '¿Borrar?', showCancelButton: true });
+
+        if(r.isConfirmed) {
+            await deleteDoc(doc(db, "servicios", t.dataset.id));
+        }
+    }
+});
+
     document.getElementById('btnLimpiar').onclick = borradorRapido;
     document.getElementById('btn-cancel').onclick = borradorRapido;
-    document.getElementById('mainBody').onclick = () => {
-        if(!audioHabilitado) {
-            audio.play().then(() => { audio.pause(); audioHabilitado = true; });
-        }
-    };
     document.getElementById('btnExcel').onclick = () => {
         const ws = XLSX.utils.json_to_sheet(servicios.map(s => ({ Fecha: new Date(s.fecha).toLocaleString(), Cliente: s.nombre, Unidad: s.unidad, Estado: s.estado })));
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Servicios");
-        XLSX.writeFile(wb, "Reporte_TaxiPlatino.xlsx");
+        const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Servicios");
+        XLSX.writeFile(wb, "Reporte_Platino.xlsx");
     };
-     // Registro de Service Worker
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-            .then(reg => console.log("Service Worker registrado con éxito", reg))
-            .catch(err => console.log("Error al registrar SW", err));
-    });
-    }
 </script>
 </body>
 </html>
