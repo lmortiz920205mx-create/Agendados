@@ -152,6 +152,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, collection, deleteDoc, doc, setDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyCV432quSSYBQnvyVNoc7rXhw99x7UlMHg",
@@ -165,6 +166,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const auth = getAuth(app);
+    const messaging = getMessaging(app);
 
     let servicios = [];
     let userRole = null;
@@ -187,6 +189,8 @@ window.addEventListener('DOMContentLoaded', () => {
             userRole = token.claims.role || "operador";
 
             console.log("ROL:", userRole);
+
+            await activarNotificaciones();
 
             // Mostrar rol
             document.getElementById('rolUser').innerText =
@@ -263,6 +267,34 @@ window.addEventListener('DOMContentLoaded', () => {
         else audio.pause();
     };
 
+    async function activarNotificaciones() {
+    try {
+        const permiso = await Notification.requestPermission();
+
+        if (permiso !== "granted") {
+            console.log("Permiso denegado");
+            return;
+        }
+
+        const token = await getToken(messaging, {
+            vapidKey: "TU_VAPID_KEY_AQUI"
+        });
+
+        console.log("TOKEN:", token);
+
+        // 🔥 IMPORTANTE: guardar token en Firestore
+        if (auth.currentUser) {
+            await setDoc(doc(db, "tokens", auth.currentUser.uid), {
+    token: token,
+    role: userRole || "admin"
+});
+        }
+
+    } catch (error) {
+        console.error("Error notificaciones:", error);
+    }
+}
+
     function inicializarApp() {
         const q = query(collection(db, "servicios"), orderBy("fecha", "asc"));
         onSnapshot(q, snap => {
@@ -272,55 +304,94 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    document.getElementById('searchBar').oninput = (e) => render(e.target.value.toLowerCase());
+    let debounceTimer;
+
+document.getElementById('searchBar').oninput = (e) => {
+    clearTimeout(debounceTimer);
+
+    debounceTimer = setTimeout(() => {
+        render(e.target.value.toLowerCase());
+    }, 300);
+};
 
     function render(filtro = "") {
     try {
-
         const lista = document.getElementById('lista');
         lista.innerHTML = "";
+
+        const fragment = document.createDocumentFragment();
 
         const ahora = Date.now();
         const quinceMin = ahora + (15 * 60 * 1000);
         let hayUrgente = false;
 
-        const filtrados = servicios.filter(s => 
-            (s.nombre || "").toLowerCase().includes(filtro) || 
+        const filtrados = servicios.filter(s =>
+            (s.nombre || "").toLowerCase().includes(filtro) ||
             (s.domicilio || "").toLowerCase().includes(filtro)
         );
 
         filtrados.forEach(s => {
-            const esUrgente = (s.estado === 'pendiente' && s.fecha <= quinceMin && s.fecha >= ahora - 600000);
-            if(esUrgente) hayUrgente = true;
+
+            const esUrgente =
+                s.estado === 'pendiente' &&
+                s.fecha <= quinceMin &&
+                s.fecha >= ahora - 600000;
+
+            if (esUrgente) hayUrgente = true;
 
             const fechaObj = new Date(s.fecha || Date.now());
-const fechaTxt = fechaObj.toLocaleString('es-MX', {
-    day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'
-});
+            const fechaTxt = fechaObj.toLocaleString('es-MX', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
 
             const div = document.createElement('div');
             div.className = `servicio-card ${s.estado} ${esUrgente ? 'urgente-blink' : ''}`;
 
-            div.innerHTML = `
-                <small>📅 ${fechaTxt}</small><br>
-                <b>${(s.nombre || "").toUpperCase()}</b><br>
-                📍 ${s.domicilio || ""}
-                <br>
-                🚕 Unidad: <b>${s.unidad || 'S/A'}</b>
-                <div class="acciones">
-                    <button class="btn-acc bg-ws" data-id="${s.id}" data-tel="${s.telefono || ""}">TAXI</button>
-                    <button class="btn-acc bg-map" data-dom="${s.domicilio || ""}">MAPA</button>
-                    <button class="btn-acc bg-edit" data-id="${s.id}">EDIT</button>
-                    <button class="btn-acc bg-fin" data-id="${s.id}">FIN</button>
-                    <button class="btn-acc bg-del" data-id="${s.id}">DEL</button>
-                </div>
-            `;
+            const fecha = document.createElement('small');
+            fecha.textContent = "📅 " + fechaTxt;
 
-            lista.appendChild(div);
+            const nombre = document.createElement('b');
+            nombre.textContent = (s.nombre || "").toUpperCase();
+
+            const domicilio = document.createElement('div');
+            domicilio.textContent = "📍 " + (s.domicilio || "");
+
+            const unidad = document.createElement('div');
+            unidad.innerHTML = "🚕 Unidad: <b></b>";
+            unidad.querySelector('b').textContent = s.unidad || "S/A";
+
+            const acciones = document.createElement('div');
+            acciones.className = "acciones";
+
+            function btn(txt, cls, data) {
+                const b = document.createElement('button');
+                b.className = `btn-acc ${cls}`;
+                b.textContent = txt;
+                Object.entries(data).forEach(([k, v]) => b.dataset[k] = v);
+                return b;
+            }
+
+            acciones.append(
+                btn("TAXI", "bg-ws", { id: s.id, tel: s.telefono || "" }),
+                btn("MAPA", "bg-map", { dom: s.domicilio || "" }),
+                btn("EDIT", "bg-edit", { id: s.id }),
+                btn("FIN", "bg-fin", { id: s.id }),
+                btn("DEL", "bg-del", { id: s.id })
+            );
+
+            div.append(fecha, document.createElement('br'), nombre, document.createElement('br'), domicilio, unidad, acciones);
+
+            fragment.appendChild(div);
         });
 
+        lista.appendChild(fragment);
+
+        // AUDIO
         if (audio) {
-            if(hayUrgente && audioHabilitado && !filtro) {
+            if (hayUrgente && audioHabilitado && !filtro) {
                 audio.play().catch(() => {});
             } else {
                 audio.pause();
@@ -445,6 +516,18 @@ if(!s) return;
         const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Servicios");
         XLSX.writeFile(wb, "Reporte_Platino.xlsx");
     };
+    if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+        .then(() => console.log("SW registrado"))
+        .catch(err => console.error("SW error:", err));
+}
+onMessage(messaging, payload => {
+    console.log("Notificación recibida:", payload);
+
+    new Notification(payload.notification.title, {
+        body: payload.notification.body
+    });
+});
 </script>
 </body>
 </html>
