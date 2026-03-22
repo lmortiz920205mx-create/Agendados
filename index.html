@@ -238,6 +238,12 @@
         XLSX.utils.book_append_sheet(wb, ws, "Servicios");
         XLSX.writeFile(wb, "Reporte_TaxiPlatino.xlsx");
     };
+    // Registro de Service Worker para PWA
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').catch(err => console.log("SW no registrado", err));
+        });
+    }
 </script>
 </body>
 </html>
