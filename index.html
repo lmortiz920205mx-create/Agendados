@@ -336,12 +336,14 @@ document.getElementById('searchBar').oninput = (e) => {
         // en-proceso = 2
         // finalizado = 3 (abajo)
 
-        .sort((a, b) => {
-    const prioridad = {
-        'pendiente': 1,
-        'en-proceso': 2,
-        'finalizado': 3
-    };
+        const prioridad = {
+            'pendiente': 1,
+            'en-proceso': 2,
+            'finalizado': 3
+        };
+
+        return prioridad[a.estado] - prioridad[b.estado];
+    });
 
     if (prioridad[a.estado] !== prioridad[b.estado]) {
         return prioridad[a.estado] - prioridad[b.estado];
