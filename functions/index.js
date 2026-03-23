@@ -17,25 +17,35 @@ exports.notificarNuevoServicio = onDocumentCreated(
 
     const data = event.data.data();
 
-    console.log("Nuevo servicio:", data);
+    console.log("🚕 Nuevo servicio:", data);
 
-    // 🔥 Obtener tokens
-    const tokensSnap = await admin.firestore().collection("tokens").get();
+    // 🔥 SOLO OPERADORES
+    const tokensSnap = await admin.firestore()
+      .collection("tokens")
+      .where("role", "==", "operador")
+      .get();
+
     const tokens = tokensSnap.docs.map(doc => doc.data().token);
 
     if (tokens.length === 0) {
-      console.log("No hay tokens");
+      console.log("❌ No hay tokens");
       return;
     }
 
-    await admin.messaging().sendEachForMulticast({
-      tokens,
-      notification: {
-        title: "🚕 NUEVO SERVICIO",
-        body: `${data.nombre || "Cliente"} - ${data.domicilio || ""}`
-      }
-    });
+    try {
+      await admin.messaging().sendEachForMulticast({
+        tokens,
+        notification: {
+          title: "🚕 NUEVO SERVICIO",
+          body: `${data.nombre || "Cliente"} - ${data.domicilio || ""}`
+        }
+      });
 
+      console.log("📢 Notificación enviada");
+
+    } catch (error) {
+      console.error("❌ Error enviando notificación:", error);
+    }
   }
 );
 
@@ -48,7 +58,7 @@ exports.alertaServiciosUrgentes = onSchedule("every 1 minutes", async () => {
   const ahora = Date.now();
   const en15Min = ahora + (15 * 60 * 1000);
 
-  console.log("Revisando servicios urgentes...");
+  console.log("⏰ Revisando servicios urgentes...");
 
   const snapshot = await admin.firestore()
     .collection("servicios")
@@ -58,37 +68,51 @@ exports.alertaServiciosUrgentes = onSchedule("every 1 minutes", async () => {
     .get();
 
   if (snapshot.empty) {
-    console.log("No hay servicios urgentes");
+    console.log("✅ No hay servicios urgentes");
     return;
   }
 
-  // 🔥 Obtener tokens
-  const tokensSnap = await admin.firestore().collection("tokens").get();
+  // 🔥 SOLO OPERADORES
+  const tokensSnap = await admin.firestore()
+    .collection("tokens")
+    .where("role", "==", "operador")
+    .get();
+
   const tokens = tokensSnap.docs.map(doc => doc.data().token);
 
   if (tokens.length === 0) {
-    console.log("No hay tokens");
+    console.log("❌ No hay tokens");
     return;
   }
 
   for (const docu of snapshot.docs) {
     const data = docu.data();
 
-    // 🔒 evitar duplicados
-    if (data.notificado) continue;
+    // 🚫 evitar spam
+    if (data.notificado === true) {
+      console.log("⛔ Ya notificado:", data.nombre);
+      continue;
+    }
 
-    await admin.messaging().sendEachForMulticast({
-      tokens,
-      notification: {
-        title: "🚨 SERVICIO EN 15 MIN",
-        body: `${data.nombre || "Cliente"} - ${data.domicilio || ""}`
-      }
-    });
+    try {
+      await admin.messaging().sendEachForMulticast({
+        tokens,
+        notification: {
+          title: "🚨 SERVICIO EN 15 MIN",
+          body: `${data.nombre || "Cliente"} - ${data.domicilio || ""}`
+        }
+      });
 
-    // 🔥 marcar como notificado
-    await docu.ref.update({ notificado: true });
+      // 🔥 marcar como notificado
+      await docu.ref.update({
+        notificado: true
+      });
 
-    console.log("Notificado:", data.nombre);
+      console.log("📢 Notificado:", data.nombre);
+
+    } catch (error) {
+      console.error("❌ Error enviando:", error);
+    }
   }
 
 });
@@ -119,7 +143,7 @@ exports.asignarRolOperador = onCall(async (request) => {
     role: "operador"
   });
 
-  console.log("Rol asignado a:", uid);
+  console.log("👨‍💼 Rol operador asignado a:", uid);
 
   return { ok: true };
 });
