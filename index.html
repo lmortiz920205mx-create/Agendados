@@ -466,7 +466,8 @@ document.getElementById('searchBar').oninput = (e) => {
             fecha: new Date(fec).getTime(),
             recurrencia: document.getElementById('recurrencia').value,
             estado: 'pendiente',
-            unidad: document.getElementById('edit-id').value ? (servicios.find(x=>x.id===id)?.unidad || 'S/A') : 'S/A'
+            unidad: document.getElementById('edit-id').value ? (servicios.find(x=>x.id===id)?.unidad || 'S/A') : 'S/A',
+            notificado: false
         };
         await setDoc(doc(db, "servicios", id), data, { merge: true });
         

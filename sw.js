@@ -1,4 +1,4 @@
-const CACHE_NAME = "taxi-platino-v1.2";
+const CACHE_NAME = "taxi-platino-v1.3";
 
 const ASSETS = [
   "/",
