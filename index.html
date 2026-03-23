@@ -296,13 +296,19 @@ window.addEventListener('DOMContentLoaded', () => {
 }
 
     function inicializarApp() {
-        const q = query(collection(db, "servicios"), orderBy("fecha", "asc"));
-        onSnapshot(q, snap => {
-            servicios = [];
-            snap.forEach(d => servicios.push({ ...d.data(), id: d.id }));
-            render(document.getElementById('searchBar').value.toLowerCase());
-        });
-    }
+    const q = query(collection(db, "servicios"), orderBy("fecha", "asc"));
+
+    onSnapshot(q, snap => {
+        servicios = [];
+        snap.forEach(d => servicios.push({ ...d.data(), id: d.id }));
+        render(document.getElementById('searchBar').value.toLowerCase());
+    });
+
+    // 🔥 NUEVO: recalcular urgentes automáticamente
+    setInterval(() => {
+        render(document.getElementById('searchBar').value.toLowerCase());
+    }, 10000); // cada 10 segundos
+}
 
     let debounceTimer;
 
