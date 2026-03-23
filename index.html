@@ -112,6 +112,9 @@
 
 <div id="app-content">
     <div class="header">
+        <button id="btnRol" class="btn-main" style="background:#6c5ce7;">
+👑 HACER OPERADOR
+</button>
         <button id="btnLogout" class="header-btn">🚪</button>
         <h2 style="margin:0">TAXI PLATINO</h2>
         <small>CENTRAL MINATITLÁN</small>
@@ -153,6 +156,7 @@
     import { getFirestore, collection, deleteDoc, doc, setDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
+    import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js";
 
     const firebaseConfig = {
         apiKey: "AIzaSyCV432quSSYBQnvyVNoc7rXhw99x7UlMHg",
@@ -164,6 +168,8 @@
     };
 
     const app = initializeApp(firebaseConfig);
+    const functions = getFunctions(app);
+const asignarRol = httpsCallable(functions, "asignarRolOperador");
     const db = getFirestore(app);
     const auth = getAuth(app);
     const messaging = getMessaging(app);
@@ -564,6 +570,41 @@ if(!s) return;
     document.getElementById('btnLimpiar').onclick = borradorRapido;
     document.getElementById('btn-cancel').onclick = borradorRapido;
     document.getElementById('btnExcel').onclick = () => {
+        // 👑 BOTÓN HACER OPERADOR
+document.getElementById('btnRol').onclick = async () => {
+
+    // 🔒 solo admin
+    if (userRole !== "admin") {
+        return Swal.fire("Acceso denegado");
+    }
+
+    const { value: uid } = await Swal.fire({
+        title: 'UID del usuario',
+        input: 'text',
+        inputPlaceholder: 'yU9hs1mN3MOngSU0B2CAe8beWhI2'
+    });
+
+    if (!uid) return;
+
+    try {
+        await asignarRol({ uid });
+
+        Swal.fire({
+            icon: 'success',
+            title: 'Listo',
+            text: 'Ahora es operador'
+        });
+
+    } catch (e) {
+        console.error(e);
+
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: e.message
+        });
+    }
+};
         const ws = XLSX.utils.json_to_sheet(servicios.map(s => ({ Fecha: new Date(s.fecha).toLocaleString(), Cliente: s.nombre, Unidad: s.unidad, Estado: s.estado })));
         const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Servicios");
         XLSX.writeFile(wb, "Reporte_Platino.xlsx");
