@@ -276,9 +276,12 @@ window.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const token = await getToken(messaging, {
-            vapidKey: "BOiwH3kCXA24-2Sdi7fTYbx2H3EL6oAgBzqtSpaK-1xlwc4kerPYy0YF7uzPme1zo3fO2jo8WGm52j6VbU0-2vc"
-        });
+        const registration = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+
+const token = await getToken(messaging, {
+  vapidKey: "BOiwH3kCXA24-2Sdi7fTYbx2H3EL6oAgBzqtSpaK-1xlwc4kerPYy0YF7uzPme1zo3fO2jo8WGm52j6VbU0-2vc",
+  serviceWorkerRegistration: registration
+});
 
         console.log("TOKEN:", token);
 
