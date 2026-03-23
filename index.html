@@ -462,9 +462,25 @@ document.getElementById('searchBar').oninput = (e) => {
         await setDoc(doc(db, "servicios", id), data, { merge: true });
         
         // WhatsApp notification
-        const f = new Date(data.fecha);
-        const msg = `*🆕 NUEVO SERVICIO*\n\n👤 *Cliente:* ${nom.toUpperCase()}\n📞 *Tel:* ${data.telefono}\n📅 *Fecha:* ${f.toLocaleDateString()}\n⏰ *Hora:* ${f.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}\n📍 *Origen:* ${data.domicilio}`;
-        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+const f = new Date(data.fecha);
+
+const horaFormateada = f.toLocaleString('es-MX', {
+    day: 'numeric',
+    month: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit'
+});
+
+const msg = `🚕 *NUEVO SERVICIO*
+
+👤 *Cliente:* ${nom}
+📍 *Origen:* ${data.domicilio || "Sin ubicación"}
+⏰ *Hora:* ${horaFormateada}
+
+⚠️ *Estado:* PENDIENTE`;
+
+window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
         
         borradorRapido();
     };
@@ -482,7 +498,19 @@ document.getElementById('searchBar').oninput = (e) => {
         if(u) {
             await setDoc(doc(db, "servicios", t.dataset.id), { unidad: u, estado: 'en-proceso' }, { merge: true });
             if(t.dataset.tel && t.dataset.tel.length === 10) {
-                window.open(`https://wa.me/52${t.dataset.tel}?text=${encodeURIComponent('Taxi Platino: Unidad '+u+' en camino.')}`, '_blank');
+                const msgCliente = `🚖 *TAXI PLATINO*
+
+Hola, su servicio ya fue asignado ✅
+
+🚕 *Unidad:* ${u}
+
+📍 El operador va en camino a su ubicación.
+
+⏳ Por favor esté pendiente.
+
+🙏 Gracias por confiar en nosotros`;
+
+window.open(`https://wa.me/52${t.dataset.tel}?text=${encodeURIComponent(msgCliente)}`, '_blank');
             }
         }
     }
