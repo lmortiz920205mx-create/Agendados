@@ -325,10 +325,31 @@ document.getElementById('searchBar').oninput = (e) => {
         const quinceMin = ahora + (15 * 60 * 1000);
         let hayUrgente = false;
 
-        const filtrados = servicios.filter(s =>
-            (s.nombre || "").toLowerCase().includes(filtro) ||
-            (s.domicilio || "").toLowerCase().includes(filtro)
-        );
+        const filtrados = servicios
+    .filter(s =>
+        (s.nombre || "").toLowerCase().includes(filtro) ||
+        (s.domicilio || "").toLowerCase().includes(filtro)
+    )
+    .sort((a, b) => {
+        // PRIORIDAD:
+        // pendiente = 1 (arriba)
+        // en-proceso = 2
+        // finalizado = 3 (abajo)
+
+        .sort((a, b) => {
+    const prioridad = {
+        'pendiente': 1,
+        'en-proceso': 2,
+        'finalizado': 3
+    };
+
+    if (prioridad[a.estado] !== prioridad[b.estado]) {
+        return prioridad[a.estado] - prioridad[b.estado];
+    }
+
+    // Si tienen mismo estado → ordenar por fecha
+    return a.fecha - b.fecha;
+});
 
         filtrados.forEach(s => {
 
