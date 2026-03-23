@@ -1,4 +1,4 @@
-const CACHE_NAME = "taxi-platino-v1";
+const CACHE_NAME = "taxi-platino-v1.1";
 
 const ASSETS = [
   "/",
@@ -13,11 +13,11 @@ const ASSETS = [
 // 🔹 FIREBASE (PUSH)
 // =====================
 
-// Importar Firebase (VERSIÓN COMPAT para SW)
-importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js");
+// 🔥 IMPORTANTE: importar Firebase
+importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
-// ⚠️ Usa EXACTAMENTE tu config
+// ⚠️ Tu config
 firebase.initializeApp({
   apiKey: "AIzaSyCV432quSSYBQnvyVNoc7rXhw99x7UlMHg",
   authDomain: "taxi-platino-95ea3.firebaseapp.com",
@@ -28,22 +28,20 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-
 // =====================
 // 🔹 PUSH EN BACKGROUND
 // =====================
-
 messaging.onBackgroundMessage(payload => {
   console.log("Push recibido:", payload);
 
-  self.registration.showNotification(
-    payload.notification.title,
-    {
-      body: payload.notification.body,
-      icon: "/favicon.ico",
-      badge: "/favicon.ico"
-    }
-  );
+  const title = payload.notification?.title || "Taxi Platino";
+  const body = payload.notification?.body || "Nuevo evento";
+
+  self.registration.showNotification(title, {
+    body: body,
+    icon: "/favicon.ico",
+    badge: "/favicon.ico"
+  });
 });
 
 
