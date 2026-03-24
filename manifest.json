@@ -1,6 +1,6 @@
 {
   "name": "Taxi Platino Admin",
-  "short_name": "Platino",
+  "short_name": "Agendados",
   "start_url": "index.html",
   "display": "standalone",
   "background_color": "#1a2b4c",

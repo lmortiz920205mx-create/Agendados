@@ -112,9 +112,7 @@
 
 <div id="app-content">
     <div class="header">
-        <button id="btnRol" class="btn-main" style="background:#6c5ce7;">
-👑 HACER OPERADOR
-</button>
+
         <button id="btnLogout" class="header-btn">🚪</button>
         <h2 style="margin:0">TAXI PLATINO</h2>
         <small>CENTRAL MINATITLÁN</small>
@@ -122,6 +120,10 @@
 <small id="rolUser"></small>
         <button id="btnSonido" class="header-btn">🔇</button>
     </div>
+
+    <button id="btnRol" class="btn-main" style="background:#6c5ce7;">
+👑 REGISTRAR OPERADOR
+</button>
 
     <div class="form-card" id="formulario">
         <input type="hidden" id="edit-id">
@@ -568,13 +570,12 @@ if(!s) return;
     }
 });
 
-    document.getElementById('btnLimpiar').onclick = borradorRapido;
-    document.getElementById('btn-cancel').onclick = borradorRapido;
-    document.getElementById('btnExcel').onclick = () => {
-        // 👑 BOTÓN HACER OPERADOR
-document.getElementById('btnRol').onclick = async () => {
+    // ================================
+// BOTONES PRINCIPALES
+// ================================
 
-    // 🔒 solo admin
+// REGISTRAR OPERADOR
+document.getElementById('btnRol').onclick = async () => {
     if (userRole !== "admin") {
         return Swal.fire("Acceso denegado");
     }
@@ -589,16 +590,13 @@ document.getElementById('btnRol').onclick = async () => {
 
     try {
         await asignarRol({ uid });
-
         Swal.fire({
             icon: 'success',
             title: 'Listo',
             text: 'Ahora es operador'
         });
-
     } catch (e) {
         console.error(e);
-
         Swal.fire({
             icon: 'error',
             title: 'Error',
@@ -606,10 +604,60 @@ document.getElementById('btnRol').onclick = async () => {
         });
     }
 };
-        const ws = XLSX.utils.json_to_sheet(servicios.map(s => ({ Fecha: new Date(s.fecha).toLocaleString(), Cliente: s.nombre, Unidad: s.unidad, Estado: s.estado })));
-        const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Servicios");
-        XLSX.writeFile(wb, "Reporte_Platino.xlsx");
+
+// GUARDAR Y NOTIFICAR
+document.getElementById('btnGuardar').onclick = async () => {
+    const nom = document.getElementById('nombre').value;
+    const fec = document.getElementById('fecha').value;
+    if (!nom || !fec) return Swal.fire('Error', 'Datos incompletos', 'warning');
+
+    const id = document.getElementById('edit-id').value || Date.now().toString();
+    const data = {
+        nombre: nom,
+        telefono: document.getElementById('telefono').value,
+        domicilio: document.getElementById('domicilio').value,
+        fecha: new Date(fec).getTime(),
+        recurrencia: document.getElementById('recurrencia').value,
+        estado: 'pendiente',
+        unidad: document.getElementById('edit-id').value ? (servicios.find(x=>x.id===id)?.unidad || 'S/A') : 'S/A',
+        notificado: false
     };
+
+    await setDoc(doc(db, "servicios", id), data, { merge: true });
+
+    // Enviar WhatsApp
+    const f = new Date(data.fecha);
+    const horaFormateada = f.toLocaleString('es-MX', {
+        day: 'numeric',
+        month: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+    });
+
+    const msg = `🚕 *NUEVO SERVICIO*\n\n👤 *Cliente:* ${nom}\n📍 *Origen:* ${data.domicilio || "Sin ubicación"}\n⏰ *Hora:* ${horaFormateada}\n\n⚠️ *Estado:* PENDIENTE`;
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+
+    borradorRapido();
+};
+
+// LIMPIAR FORMULARIO
+document.getElementById('btnLimpiar').onclick = borradorRapido;
+document.getElementById('btn-cancel').onclick = borradorRapido;
+
+// EXPORTAR A EXCEL
+document.getElementById('btnExcel').onclick = () => {
+    const ws = XLSX.utils.json_to_sheet(servicios.map(s => ({
+        Fecha: new Date(s.fecha).toLocaleString(),
+        Cliente: s.nombre,
+        Unidad: s.unidad,
+        Estado: s.estado
+    })));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Servicios");
+    XLSX.writeFile(wb, "Reporte_Platino.xlsx");
+};
     if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js')
     navigator.serviceWorker.register('./firebase-messaging-sw.js')
