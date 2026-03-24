@@ -97,6 +97,36 @@
         transform: translateY(0); 
     }
 }
+
+.tab-btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: #ddd;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.tab-btn.active {
+    background: #1a2b4c;
+    color: white;
+}
+.tab-btn[data-tab="pendiente"].active {
+    background: #fbc02d;
+    color: black;
+}
+
+.tab-btn[data-tab="en-proceso"].active {
+    background: #2ecc71;
+    color: white;
+}
+
+.tab-btn[data-tab="finalizado"].active {
+    background: #616161;
+    color: white;
+}
     </style>
 </head>
 <body id="mainBody">
@@ -123,7 +153,7 @@
     </div>
 
     <button id="btnRol" class="btn-main" style="background:#6c5ce7;">
-👑 HACER OPERADOR
+👑 REGISTRAR OPERADOR
 </button>
 
     <div class="form-card" id="formulario">
@@ -147,6 +177,12 @@
     </div>
 
     <input type="text" id="searchBar" placeholder="🔍 Buscar por nombre o domicilio...">
+
+    <div id="tabs" style="display:flex; gap:5px; margin-bottom:15px;">
+    <button class="tab-btn active" data-tab="pendiente">🟡 Pendientes</button>
+    <button class="tab-btn" data-tab="en-proceso">🟢 En proceso</button>
+    <button class="tab-btn" data-tab="finalizado">⚫ Finalizados</button>
+</div>
 
     <div id="lista"></div>
 </div>
@@ -181,6 +217,7 @@ const asignarRol = httpsCallable(functions, "asignarRolOperador");
     let userRole = null;
     let audioHabilitado = false;
     let audio;
+    let tabActual = "pendiente";
 
 window.addEventListener('DOMContentLoaded', () => {
     audio = document.getElementById('audioAlerta');
@@ -313,14 +350,68 @@ const token = await getToken(messaging, {
     onSnapshot(q, snap => {
         servicios = [];
         snap.forEach(d => servicios.push({ ...d.data(), id: d.id }));
+
+        actualizarContadores();
+        autoCambiarTab();
+
         render(document.getElementById('searchBar').value.toLowerCase());
+
+        function actualizarContadores() {
+    const pendientes = servicios.filter(s => s.estado === "pendiente").length;
+    const proceso = servicios.filter(s => s.estado === "en-proceso").length;
+    const finalizados = servicios.filter(s => s.estado === "finalizado").length;
+    const ahora = Date.now();
+const urgentes = servicios.filter(s =>
+    s.estado === 'pendiente' &&
+    s.fecha <= ahora + (15 * 60 * 1000) &&
+    s.fecha >= ahora - 600000
+).length;
+    const tabPendiente = document.querySelector('[data-tab="pendiente"]');
+
+if (pendientes > 0) {
+    tabPendiente.classList.add('tab-alerta');
+} else {
+    tabPendiente.classList.remove('tab-alerta');
+}
+
+    document.querySelector('[data-tab="pendiente"]').innerText = `🟡 Pendientes (${pendientes})`;
+    document.querySelector('[data-tab="en-proceso"]').innerText = `🟢 En proceso (${proceso})`;
+    document.querySelector('[data-tab="finalizado"]').innerText = `⚫ Finalizados (${finalizados})`;
+    const tabPend = document.getElementById('tabPendientes');
+
+if (urgentes > 0) {
+    tabPend.style.background = "#ff0000";
+    tabPend.style.color = "white";
+} else {
+    tabPend.style.background = "";
+    tabPend.style.color = "";
+}
+
+// 🔥 AUTO CAMBIO DE PESTAÑA
+if (urgentes > 0 && tabActual !== 'pendiente') {
+    tabActual = 'pendiente';
+    render(document.getElementById('searchBar').value.toLowerCase());
+}
+}
     });
 
     // 🔥 NUEVO: recalcular urgentes automáticamente
     setInterval(() => {
         render(document.getElementById('searchBar').value.toLowerCase());
-    }, 10000); // cada 10 segundos
+    }, 5000); // cada 5 segundos
 }
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.onclick = () => {
+        tabActual = btn.dataset.tab;
+
+        // cambiar botón activo
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        render(document.getElementById('searchBar').value.toLowerCase());
+    };
+});
 
     let debounceTimer;
 
@@ -345,8 +436,11 @@ document.getElementById('searchBar').oninput = (e) => {
 
         const filtrados = servicios
     .filter(s =>
-        (s.nombre || "").toLowerCase().includes(filtro) ||
-        (s.domicilio || "").toLowerCase().includes(filtro)
+        s.estado === tabActual &&
+        (
+            (s.nombre || "").toLowerCase().includes(filtro) ||
+            (s.domicilio || "").toLowerCase().includes(filtro)
+        )
     )
     .sort((a, b) => {
         // PRIORIDAD:
@@ -380,11 +474,25 @@ document.getElementById('searchBar').oninput = (e) => {
                 minute: '2-digit'
             });
 
+            const minutosRestantes = Math.floor((s.fecha - ahora) / 60000);
+
             const div = document.createElement('div');
             div.className = `servicio-card ${s.estado} ${esUrgente ? 'urgente-blink' : ''}`;
 
             const fecha = document.createElement('small');
-            fecha.textContent = "📅 " + fechaTxt;
+
+if (minutosRestantes <= 15 && minutosRestantes >= 0 && s.estado === 'pendiente') {
+    fecha.innerHTML = `⏰ <b>${minutosRestantes} min</b> - ${fechaTxt}`;
+    fecha.style.color = "red";
+
+    // 🔥 AQUÍ VA EL BONUS VISUAL
+    if (minutosRestantes <= 5) {
+        fecha.style.animation = "blinker 1s linear infinite";
+    }
+
+} else {
+    fecha.textContent = "📅 " + fechaTxt;
+}
 
             const nombre = document.createElement('b');
             nombre.textContent = (s.nombre || "").toUpperCase();
@@ -440,63 +548,35 @@ document.getElementById('searchBar').oninput = (e) => {
 
     function aplicarPermisosUI() {
 
-    // Eliminar
+    // ELIMINAR (solo admin)
     document.querySelectorAll('.bg-del').forEach(btn => {
         btn.style.display = (userRole === "admin") ? "block" : "none";
     });
 
-    // Finalizar
+    // FINALIZAR (admin y operador)
     document.querySelectorAll('.bg-fin').forEach(btn => {
-        btn.style.display = (userRole === "admin") ? "block" : "none";
+        btn.style.display = "block";
     });
 
-    // Excel
+    // EDITAR (todos)
+    document.querySelectorAll('.bg-edit').forEach(btn => {
+        btn.style.display = "block";
+    });
+
+    // TAXI (todos)
+    document.querySelectorAll('.bg-ws').forEach(btn => {
+        btn.style.display = "block";
+    });
+
+    // MAPA (todos)
+    document.querySelectorAll('.bg-map').forEach(btn => {
+        btn.style.display = "block";
+    });
+
+    // EXCEL (solo admin)
     document.getElementById('btnExcel').style.display =
         (userRole === "admin") ? "block" : "none";
 }
-
-    // --- CRUD Y ACCIONES ---
-    document.getElementById('btnGuardar').onclick = async () => {
-        const nom = document.getElementById('nombre').value;
-        const fec = document.getElementById('fecha').value;
-        if(!nom || !fec) return Swal.fire('Error', 'Datos incompletos', 'warning');
-
-        const id = document.getElementById('edit-id').value || Date.now().toString();
-        const data = {
-            nombre: nom,
-            telefono: document.getElementById('telefono').value,
-            domicilio: document.getElementById('domicilio').value,
-            fecha: new Date(fec).getTime(),
-            recurrencia: document.getElementById('recurrencia').value,
-            estado: 'pendiente',
-            unidad: document.getElementById('edit-id').value ? (servicios.find(x=>x.id===id)?.unidad || 'S/A') : 'S/A',
-            notificado: false
-        };
-        await setDoc(doc(db, "servicios", id), data, { merge: true });
-        
-        // WhatsApp notification
-const f = new Date(data.fecha);
-
-const horaFormateada = f.toLocaleString('es-MX', {
-    day: 'numeric',
-    month: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit'
-});
-
-const msg = `🚕 *NUEVO SERVICIO*
-
-👤 *Cliente:* ${nom}
-📍 *Origen:* ${data.domicilio || "Sin ubicación"}
-⏰ *Hora:* ${horaFormateada}
-
-⚠️ *Estado:* PENDIENTE`;
-
-window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-        
-        borradorRapido();
-    };
 
     function borradorRapido() {
         ['edit-id', 'nombre', 'telefono', 'domicilio', 'fecha'].forEach(i => document.getElementById(i).value = "");
@@ -547,9 +627,12 @@ if(!s) return;
 
     if(t.classList.contains('bg-fin')) {
 
-        if(userRole !== "admin") {
-            return Swal.fire('Acceso denegado');
-        }
+        if(t.classList.contains('bg-fin')) {
+    await setDoc(doc(db, "servicios", t.dataset.id),
+        { estado: 'finalizado' },
+        { merge: true }
+    );
+}
 
         await setDoc(doc(db, "servicios", t.dataset.id),
             { estado: 'finalizado' },
@@ -660,7 +743,6 @@ document.getElementById('btnExcel').onclick = () => {
     XLSX.writeFile(wb, "Reporte_Platino.xlsx");
 };
     if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
     navigator.serviceWorker.register('./firebase-messaging-sw.js')
         .then(() => console.log("SW registrado"))
         .catch(err => console.error("SW error:", err));
