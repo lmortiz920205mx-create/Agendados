@@ -164,6 +164,15 @@
         <div style="display: flex; gap: 10px;">
             <input type="datetime-local" id="fecha" style="flex: 2;">
             <select id="recurrencia" style="flex: 1.5;">
+                <div id="diasSemana" style="display:none; margin-top:10px;">
+    <label><input type="checkbox" value="1"> L</label>
+    <label><input type="checkbox" value="2"> M</label>
+    <label><input type="checkbox" value="3"> M</label>
+    <label><input type="checkbox" value="4"> J</label>
+    <label><input type="checkbox" value="5"> V</label>
+    <label><input type="checkbox" value="6"> S</label>
+    <label><input type="checkbox" value="0"> D</label>
+</div>
                 <option value="no">Servicio Único</option>
                 <option value="diario">Repetir cada 24h</option>
             </select>
@@ -696,16 +705,26 @@ document.getElementById('btnGuardar').onclick = async () => {
     if (!nom || !fec) return Swal.fire('Error', 'Datos incompletos', 'warning');
 
     const id = document.getElementById('edit-id').value || Date.now().toString();
-    const data = {
-        nombre: nom,
-        telefono: document.getElementById('telefono').value,
-        domicilio: document.getElementById('domicilio').value,
-        fecha: new Date(fec).getTime(),
-        recurrencia: document.getElementById('recurrencia').value,
-        estado: 'pendiente',
-        unidad: document.getElementById('edit-id').value ? (servicios.find(x=>x.id===id)?.unidad || 'S/A') : 'S/A',
-        notificado: false
-    };
+    const tipoRec = document.getElementById('recurrencia').value;
+
+let dias = [];
+
+if (tipoRec === 'diario') {
+    dias = Array.from(document.querySelectorAll('#diasSemana input:checked'))
+        .map(c => parseInt(c.value));
+}
+
+const data = {
+    nombre: nom,
+    telefono: document.getElementById('telefono').value,
+    domicilio: document.getElementById('domicilio').value,
+    fecha: new Date(fec).getTime(),
+    recurrencia: tipoRec,
+    dias: dias,
+    estado: 'pendiente',
+    unidad: 'S/A',
+    notificado: false
+};
 
     await setDoc(doc(db, "servicios", id), data, { merge: true });
 
@@ -753,6 +772,11 @@ onMessage(messaging, payload => {
     new Notification(payload.notification.title, {
         body: payload.notification.body
     });
+
+    document.getElementById('recurrencia').onchange = (e) => {
+    document.getElementById('diasSemana').style.display =
+        e.target.value === 'diario' ? 'block' : 'none';
+      };
 });
 </script>
 </body>

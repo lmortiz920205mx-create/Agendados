@@ -147,3 +147,60 @@ exports.asignarRolOperador = onCall(async (request) => {
 
   return { ok: true };
 });
+
+const db = admin.firestore();
+
+exports.recurrenciaServicios = onSchedule("every 5 minutes", async () => {
+    console.log("🔁 Revisando servicios recurrentes...");
+
+    const ahora = Date.now();
+    const hace1Min = ahora - 60000;
+
+    const snap = await db.collection("servicios")
+        .where("recurrencia", "==", "diario")
+        .where("fecha", "<=", ahora)
+        .where("fecha", ">=", hace1Min)
+        .get();
+
+    for (const docu of snap.docs) {
+    const data = docu.data();
+
+    if (data.recurrenteProcesado) continue;
+
+    const fechaActual = new Date(data.fecha);
+    const siguiente = new Date(data.fecha);
+
+    // buscar próximo día válido
+    let encontrado = false;
+
+    for (let i = 1; i <= 7; i++) {
+        siguiente.setDate(fechaActual.getDate() + i);
+
+        const dia = siguiente.getDay(); // 0-6
+
+        if (data.dias.includes(dia)) {
+            encontrado = true;
+            break;
+        }
+    }
+
+    if (!encontrado) continue;
+
+    const nuevaFecha = siguiente.getTime();
+
+    await db.collection("servicios").add({
+        ...data,
+        fecha: nuevaFecha,
+        estado: "pendiente",
+        unidad: "S/A",
+        notificado: false,
+        recurrenteProcesado: false
+    });
+
+    await docu.ref.update({
+        recurrenteProcesado: true
+    });
+
+    console.log("♻️ Recurrente creado:", data.nombre);
+}
+});
