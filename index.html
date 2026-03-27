@@ -127,6 +127,53 @@
     background: #616161;
     color: white;
 }
+
+.dias-container {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.dia {
+    position: relative;
+    flex: 1;
+    text-align: center;
+}
+
+.dia input {
+    display: none;
+}
+
+.dia span {
+    display: block;
+    padding: 10px 0;
+    border-radius: 10px;
+    background: #eee;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* Hover */
+.dia span:hover {
+    background: #dfe6e9;
+}
+
+/* Seleccionado */
+.dia input:checked + span {
+    background: linear-gradient(135deg, #1a2b4c, #2c3e70);
+    color: white;
+}
+
+.dia span {
+    user-select: none;
+}
+
+.dia span:active {
+    transform: scale(0.95);
+}
     </style>
 </head>
 <body id="mainBody">
@@ -138,7 +185,7 @@
     </div>
 </div>
 
-<audio id="audioAlerta" src="alerta.mp3" preload="auto" loop></audio>
+<audio id="audioAlerta" src="alerta.mp3" preload="auto"></audio>
 
 <div id="app-content">
     <div class="header">
@@ -162,21 +209,54 @@
         <input type="tel" id="telefono" placeholder="📱 WhatsApp (10 dígitos)" maxlength="10">
         <input type="text" id="domicilio" placeholder="📍 Domicilio de Origen">
         <div style="display: flex; gap: 10px;">
-            <input type="datetime-local" id="fecha" style="flex: 2;">
-            <select id="recurrencia" style="flex: 1.5;">
-                <div id="diasSemana" style="display:none; margin-top:10px;">
-    <label><input type="checkbox" value="1"> L</label>
-    <label><input type="checkbox" value="2"> M</label>
-    <label><input type="checkbox" value="3"> M</label>
-    <label><input type="checkbox" value="4"> J</label>
-    <label><input type="checkbox" value="5"> V</label>
-    <label><input type="checkbox" value="6"> S</label>
-    <label><input type="checkbox" value="0"> D</label>
+    <input type="datetime-local" id="fecha" style="flex: 2;">
+    <select id="recurrencia" style="flex: 1.5;">
+        <option value="no">Servicio Único</option>
+        <option value="diario">Repetir cada 24h</option>
+    </select>
 </div>
-                <option value="no">Servicio Único</option>
-                <option value="diario">Repetir cada 24h</option>
-            </select>
-        </div>
+
+<div id="diasSemana" class="dias-container">
+    <label class="dia">
+        <input type="checkbox" value="1">
+        <span>L</span>
+    </label>
+    <label class="dia">
+        <input type="checkbox" value="2">
+        <span>M</span>
+    </label>
+    <label class="dia">
+        <input type="checkbox" value="3">
+        <span>Mi</span>
+    </label>
+    <label class="dia">
+        <input type="checkbox" value="4">
+        <span>J</span>
+    </label>
+    <label class="dia">
+        <input type="checkbox" value="5">
+        <span>V</span>
+    </label>
+    <label class="dia">
+        <input type="checkbox" value="6">
+        <span>S</span>
+    </label>
+    <label class="dia">
+        <input type="checkbox" value="0">
+        <span>D</span>
+    </label>
+    <div style="display:flex; justify-content:space-between; margin-top:10px;">
+    <button type="button" id="btnTodos" style="border:none; background:none; color:var(--azul); font-weight:bold; cursor:pointer;">
+        Seleccionar todos
+    </button>
+
+    <button type="button" id="btnLimpiarDias" style="border:none; background:none; color:#999; cursor:pointer;">
+        Limpiar
+    </button>
+</div>
+<small id="resumenDias" style="display:block; margin-top:5px; opacity:0.7;"></small>
+</div>
+
         <button class="btn-main btn-save" id="btnGuardar">💾 GUARDAR Y NOTIFICAR</button>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <button class="btn-main btn-excel" id="btnExcel">📊 EXCEL</button>
@@ -217,7 +297,7 @@
 
     const app = initializeApp(firebaseConfig);
     const functions = getFunctions(app);
-const asignarRol = httpsCallable(functions, "asignarRolOperador");
+    const asignarRol = httpsCallable(functions, "asignarRolOperador");
     const db = getFirestore(app);
     const auth = getAuth(app);
     const messaging = getMessaging(app);
@@ -227,6 +307,10 @@ const asignarRol = httpsCallable(functions, "asignarRolOperador");
     let audioHabilitado = false;
     let audio;
     let tabActual = "pendiente";
+    let intervaloRender = null;
+    let elementosDOM = {};
+    let sonidoActivo = false;
+    let ultimoUrgenteId = null;
 
 window.addEventListener('DOMContentLoaded', () => {
     audio = document.getElementById('audioAlerta');
@@ -361,8 +445,7 @@ const token = await getToken(messaging, {
         snap.forEach(d => servicios.push({ ...d.data(), id: d.id }));
 
         actualizarContadores();
-        autoCambiarTab();
-
+        
         render(document.getElementById('searchBar').value.toLowerCase());
 
         function actualizarContadores() {
@@ -370,7 +453,7 @@ const token = await getToken(messaging, {
     const proceso = servicios.filter(s => s.estado === "en-proceso").length;
     const finalizados = servicios.filter(s => s.estado === "finalizado").length;
     const ahora = Date.now();
-const urgentes = servicios.filter(s =>
+    const urgentes = servicios.filter(s =>
     s.estado === 'pendiente' &&
     s.fecha <= ahora + (15 * 60 * 1000) &&
     s.fecha >= ahora - 600000
@@ -386,7 +469,7 @@ if (pendientes > 0) {
     document.querySelector('[data-tab="pendiente"]').innerText = `🟡 Pendientes (${pendientes})`;
     document.querySelector('[data-tab="en-proceso"]').innerText = `🟢 En proceso (${proceso})`;
     document.querySelector('[data-tab="finalizado"]').innerText = `⚫ Finalizados (${finalizados})`;
-    const tabPend = document.getElementById('tabPendientes');
+    const tabPend = document.querySelector('[data-tab="pendiente"]');
 
 if (urgentes > 0) {
     tabPend.style.background = "#ff0000";
@@ -401,14 +484,14 @@ if (urgentes > 0 && tabActual !== 'pendiente') {
     tabActual = 'pendiente';
     render(document.getElementById('searchBar').value.toLowerCase());
 }
-}
-    });
+}    });
 
-    // 🔥 NUEVO: recalcular urgentes automáticamente
-    setInterval(() => {
-        render(document.getElementById('searchBar').value.toLowerCase());
-    }, 5000); // cada 5 segundos
-}
+    if (!intervaloRender) {
+        intervaloRender = setInterval(() => {
+            render(document.getElementById('searchBar').value.toLowerCase());
+        }, 5000);
+
+}}
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.onclick = () => {
@@ -443,119 +526,117 @@ document.getElementById('searchBar').oninput = (e) => {
         const quinceMin = ahora + (15 * 60 * 1000);
         let hayUrgente = false;
 
-        const filtrados = servicios
-    .filter(s =>
-        s.estado === tabActual &&
-        (
-            (s.nombre || "").toLowerCase().includes(filtro) ||
-            (s.domicilio || "").toLowerCase().includes(filtro)
-        )
+       const filtrados = servicios.filter(s =>
+    s.estado === tabActual &&
+    (
+        (s.nombre || "").toLowerCase().includes(filtro) ||
+        (s.domicilio || "").toLowerCase().includes(filtro)
     )
-    .sort((a, b) => {
-        // PRIORIDAD:
-        // pendiente = 1 (arriba)
-        // en-proceso = 2
-        // finalizado = 3 (abajo)
-
+);
+    
         const prioridad = {
             'pendiente': 1,
             'en-proceso': 2,
-            'finalizado': 3
-        };
-
-        return prioridad[a.estado] - prioridad[b.estado];
-    });
+            'finalizado': 3        };
 
         filtrados.forEach(s => {
 
-            const esUrgente =
-                s.estado === 'pendiente' &&
-                s.fecha <= quinceMin &&
-                s.fecha >= ahora - 600000;
+    let div = elementosDOM[s.id];
 
-            if (esUrgente) hayUrgente = true;
+    const esUrgente =
+        s.estado === 'pendiente' &&
+        s.fecha <= quinceMin &&
+        s.fecha >= ahora - 600000;
 
-            const fechaObj = new Date(s.fecha || Date.now());
-            const fechaTxt = fechaObj.toLocaleString('es-MX', {
-                day: '2-digit',
-                month: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
+        if (esUrgente) hayUrgente = true;
 
-            const minutosRestantes = Math.floor((s.fecha - ahora) / 60000);
+    const fechaObj = new Date(s.fecha || Date.now());
+    const fechaTxt = fechaObj.toLocaleString('es-MX', {
+        day: '2-digit',
+        month: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 
-            const div = document.createElement('div');
-            div.className = `servicio-card ${s.estado} ${esUrgente ? 'urgente-blink' : ''}`;
+    const minutosRestantes = Math.floor((s.fecha - ahora) / 60000);
 
-            const fecha = document.createElement('small');
-
-if (minutosRestantes <= 15 && minutosRestantes >= 0 && s.estado === 'pendiente') {
-    fecha.innerHTML = `⏰ <b>${minutosRestantes} min</b> - ${fechaTxt}`;
-    fecha.style.color = "red";
-
-    // 🔥 AQUÍ VA EL BONUS VISUAL
-    if (minutosRestantes <= 5) {
-        fecha.style.animation = "blinker 1s linear infinite";
+    // 🆕 SI NO EXISTE, CREAR
+    if (!div) {
+        div = document.createElement('div');
+        elementosDOM[s.id] = div;
     }
 
-} else {
-    fecha.textContent = "📅 " + fechaTxt;
-}
+    // 🆕 SOLO ACTUALIZA CONTENIDO
+    div.className = `servicio-card ${s.estado} ${esUrgente ? 'urgente-blink' : ''}`;
 
-            const nombre = document.createElement('b');
-            nombre.textContent = (s.nombre || "").toUpperCase();
-
-            const domicilio = document.createElement('div');
-            domicilio.textContent = "📍 " + (s.domicilio || "");
-
-            const unidad = document.createElement('div');
-            unidad.innerHTML = "🚕 Unidad: <b></b>";
-            unidad.querySelector('b').textContent = s.unidad || "S/A";
-
-            const acciones = document.createElement('div');
-            acciones.className = "acciones";
-
-            function btn(txt, cls, data) {
-                const b = document.createElement('button');
-                b.className = `btn-acc ${cls}`;
-                b.textContent = txt;
-                Object.entries(data).forEach(([k, v]) => b.dataset[k] = v);
-                return b;
+    div.innerHTML = `
+        <small style="${minutosRestantes <= 15 && minutosRestantes >= 0 && s.estado === 'pendiente' ? 'color:red;' : ''}">
+            ${
+                minutosRestantes <= 15 && minutosRestantes >= 0 && s.estado === 'pendiente'
+                ? `⏰ <b>${minutosRestantes} min</b> - ${fechaTxt}`
+                : `📅 ${fechaTxt}`
             }
+        </small><br>
 
-            acciones.append(
-                btn("TAXI", "bg-ws", { id: s.id, tel: s.telefono || "" }),
-                btn("MAPA", "bg-map", { dom: s.domicilio || "" }),
-                btn("EDIT", "bg-edit", { id: s.id }),
-                btn("FIN", "bg-fin", { id: s.id }),
-                btn("DEL", "bg-del", { id: s.id })
-            );
+        <b>${(s.nombre || "").toUpperCase()}</b><br>
+        <div>📍 ${s.domicilio || ""}</div>
+        <div>🚕 Unidad: <b>${s.unidad || "S/A"}</b></div>
 
-            div.append(fecha, document.createElement('br'), nombre, document.createElement('br'), domicilio, unidad, acciones);
+        <div class="acciones">
+            <button class="btn-acc bg-ws" data-id="${s.id}" data-tel="${s.telefono || ""}">TAXI</button>
+            <button class="btn-acc bg-map" data-dom="${s.domicilio || ""}">MAPA</button>
+            <button class="btn-acc bg-edit" data-id="${s.id}">EDIT</button>
+            <button class="btn-acc bg-fin" data-id="${s.id}">FIN</button>
+            <button class="btn-acc bg-del" data-id="${s.id}">DEL</button>
+        </div>
+    `;
 
-            fragment.appendChild(div);
-        });
+    fragment.appendChild(div);
+});
+
+Object.keys(elementosDOM).forEach(id => {
+    if (!servicios.find(s => s.id === id)) {
+        delete elementosDOM[id];
+    }
+});
 
         lista.appendChild(fragment);
 
         // AUDIO
         if (audio) {
-            if (hayUrgente && audioHabilitado && !filtro) {
-                audio.play().catch(() => {});
-            } else {
-                audio.pause();
-            }
+            if (hayUrgente && audioHabilitado) {
+    if (!sonidoActivo) {
+        audio.play().catch(() => {});
+        sonidoActivo = true;
+    }
+} else {
+    audio.pause();
+    sonidoActivo = false;
+}
         }
 
+        if (hayUrgente && navigator.vibrate) {
+    navigator.vibrate([200, 100, 200]);
+}
+
+        if (esUrgente && s.id !== ultimoUrgenteId) {
+    if (audioHabilitado) {
+        audio.play().catch(() => {});
+    }
+    ultimoUrgenteId = s.id;
+}
         aplicarPermisosUI();
 
     } catch (err) {
         console.error("Error en render:", err);
+    }}
+    
+    function borradorRapido() {
+        ['edit-id', 'nombre', 'telefono', 'domicilio', 'fecha'].forEach(i => document.getElementById(i).value = "");
+        document.getElementById('btn-cancel').style.display = "none";
     }
-}
 
-    function aplicarPermisosUI() {
+function aplicarPermisosUI() {
 
     // ELIMINAR (solo admin)
     document.querySelectorAll('.bg-del').forEach(btn => {
@@ -587,11 +668,6 @@ if (minutosRestantes <= 15 && minutosRestantes >= 0 && s.estado === 'pendiente')
         (userRole === "admin") ? "block" : "none";
 }
 
-    function borradorRapido() {
-        ['edit-id', 'nombre', 'telefono', 'domicilio', 'fecha'].forEach(i => document.getElementById(i).value = "");
-        document.getElementById('btn-cancel').style.display = "none";
-    }
-
     document.addEventListener('click', async e => {
     const t = e.target;
 
@@ -599,7 +675,7 @@ if (minutosRestantes <= 15 && minutosRestantes >= 0 && s.estado === 'pendiente')
         const { value: u } = await Swal.fire({ title: 'Unidad:', input: 'text' });
         if(u) {
             await setDoc(doc(db, "servicios", t.dataset.id), { unidad: u, estado: 'en-proceso' }, { merge: true });
-            if(t.dataset.tel && t.dataset.tel.length === 10) {
+            if(/^\d{10}$/.test(t.dataset.tel)) {
                 const msgCliente = `🚖 *TAXI PLATINO*
 
 Hola, su servicio ya fue asignado ✅
@@ -631,23 +707,14 @@ if(!s) return;
         const tz = new Date().getTimezoneOffset() * 60000;
         document.getElementById('fecha').value = new Date(s.fecha - tz).toISOString().slice(0,16);
         document.getElementById('btn-cancel').style.display = "block";
-        window.scrollTo(0,0);
-    }
+        window.scrollTo(0,0);    }
 
-    if(t.classList.contains('bg-fin')) {
-
-        if(t.classList.contains('bg-fin')) {
+            if(t.classList.contains('bg-fin')) {
     await setDoc(doc(db, "servicios", t.dataset.id),
         { estado: 'finalizado' },
         { merge: true }
     );
 }
-
-        await setDoc(doc(db, "servicios", t.dataset.id),
-            { estado: 'finalizado' },
-            { merge: true }
-        );
-    }
 
     if(t.classList.contains('bg-del')) {
 
@@ -661,7 +728,7 @@ if(!s) return;
             await deleteDoc(doc(db, "servicios", t.dataset.id));
         }
     }
-});
+})
 
     // ================================
 // BOTONES PRINCIPALES
@@ -704,7 +771,7 @@ document.getElementById('btnGuardar').onclick = async () => {
     const fec = document.getElementById('fecha').value;
     if (!nom || !fec) return Swal.fire('Error', 'Datos incompletos', 'warning');
 
-    const id = document.getElementById('edit-id').value || Date.now().toString();
+    const id = document.getElementById('edit-id').value || crypto.randomUUID();
     const tipoRec = document.getElementById('recurrencia').value;
 
 let dias = [];
@@ -712,6 +779,10 @@ let dias = [];
 if (tipoRec === 'diario') {
     dias = Array.from(document.querySelectorAll('#diasSemana input:checked'))
         .map(c => parseInt(c.value));
+
+    if (dias.length === 0) {
+        return Swal.fire('Error', 'Selecciona al menos un día', 'warning');
+    }
 }
 
 const data = {
@@ -766,18 +837,43 @@ document.getElementById('btnExcel').onclick = () => {
         .then(() => console.log("SW registrado"))
         .catch(err => console.error("SW error:", err));
 }
-onMessage(messaging, payload => {
+    onMessage(messaging, payload => {
     console.log("Notificación recibida:", payload);
 
-    new Notification(payload.notification.title, {
-        body: payload.notification.body
-    });
+    if (payload?.notification) {
+        new Notification(payload.notification.title, {
+            body: payload.notification.body
+        });
+    }
+});
 
-    document.getElementById('recurrencia').onchange = (e) => {
+document.getElementById('recurrencia').onchange = (e) => {
     document.getElementById('diasSemana').style.display =
         e.target.value === 'diario' ? 'block' : 'none';
       };
-});
+      const checkboxesDias = document.querySelectorAll('#diasSemana input');
+
+document.getElementById('btnTodos').onclick = () => {
+    checkboxesDias.forEach(c => c.checked = true);
+};
+
+document.getElementById('btnLimpiarDias').onclick = () => {
+    checkboxesDias.forEach(c => c.checked = false);
+};
+function actualizarResumenDias() {
+    const diasTexto = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+    const seleccionados = Array.from(checkboxesDias)
+        .filter(c => c.checked)
+        .map(c => diasTexto[c.value]);
+
+    document.getElementById('resumenDias').innerText =
+        seleccionados.length ? "Repite: " + seleccionados.join(', ') : "";
+}
+
+checkboxesDias.forEach(c => {
+    c.addEventListener('change', actualizarResumenDias);
+});  
 </script>
 </body>
 </html>

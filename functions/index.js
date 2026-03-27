@@ -153,54 +153,54 @@ const db = admin.firestore();
 exports.recurrenciaServicios = onSchedule("every 5 minutes", async () => {
     console.log("🔁 Revisando servicios recurrentes...");
 
-    const ahora = Date.now();
-    const hace1Min = ahora - 60000;
+    const db = admin.firestore();
+    const ahora = new Date();
 
-    const snap = await db.collection("servicios")
+    const snapshot = await db.collection("servicios")
         .where("recurrencia", "==", "diario")
-        .where("fecha", "<=", ahora)
-        .where("fecha", ">=", hace1Min)
         .get();
 
-    for (const docu of snap.docs) {
-    const data = docu.data();
+    for (const docu of snapshot.docs) {
 
-    if (data.recurrenteProcesado) continue;
+        const data = docu.data();
 
-    const fechaActual = new Date(data.fecha);
-    const siguiente = new Date(data.fecha);
+        const fechaOriginal = new Date(data.fecha);
+        const diaHoy = ahora.getDay();
 
-    // buscar próximo día válido
-    let encontrado = false;
+        // 🚫 Si hoy no está en los días, ignorar
+        if (!data.dias.includes(diaHoy)) continue;
 
-    for (let i = 1; i <= 7; i++) {
-        siguiente.setDate(fechaActual.getDate() + i);
+        // 🔥 Crear fecha para HOY con la misma hora
+        const nuevaFecha = new Date();
+        nuevaFecha.setHours(
+            fechaOriginal.getHours(),
+            fechaOriginal.getMinutes(),
+            0,
+            0
+        );
 
-        const dia = siguiente.getDay(); // 0-6
+        const nuevaFechaMs = nuevaFecha.getTime();
 
-        if (data.dias.includes(dia)) {
-            encontrado = true;
-            break;
+        // 🚫 Evitar duplicados
+        const yaExiste = await db.collection("servicios")
+            .where("nombre", "==", data.nombre)
+            .where("fecha", "==", nuevaFechaMs)
+            .get();
+
+        if (!yaExiste.empty) {
+            console.log("⛔ Ya existe:", data.nombre);
+            continue;
         }
+
+        // 🔥 Crear nuevo servicio
+        await db.collection("servicios").add({
+            ...data,
+            fecha: nuevaFechaMs,
+            estado: "pendiente",
+            unidad: "S/A",
+            notificado: false
+        });
+
+        console.log("♻️ Servicio recurrente creado:", data.nombre);
     }
-
-    if (!encontrado) continue;
-
-    const nuevaFecha = siguiente.getTime();
-
-    await db.collection("servicios").add({
-        ...data,
-        fecha: nuevaFecha,
-        estado: "pendiente",
-        unidad: "S/A",
-        notificado: false,
-        recurrenteProcesado: false
-    });
-
-    await docu.ref.update({
-        recurrenteProcesado: true
-    });
-
-    console.log("♻️ Recurrente creado:", data.nombre);
-}
 });
