@@ -80,3 +80,10 @@ input, select { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #d
 .acciones-dias {
     display: none;
 }
+
+.divider {
+    height: 1px;
+    background: #ddd;
+    margin: 20px 0;
+    opacity: 0.6;
+}
