@@ -8,10 +8,16 @@ export function initAuth(onLogin, onLogout) {
     onAuthStateChanged(auth, async user => {
         const loader = document.getElementById('loader');
         if (user) {
+            document.getElementById('loader').style.display = "none";
+document.getElementById('app-content').classList.remove('hidden');
             try {
                 const token = await user.getIdTokenResult();
                 userRole = token.claims.role || "operador";
-                await activarNotificaciones(user, userRole);
+                try {
+    await activarNotificaciones(user, userRole);
+} catch (e) {
+    console.warn("Notificaciones fallaron:", e);
+}
                 document.getElementById('rolUser').innerText = userRole === "admin" ? "👑 ADMIN" : "👨‍💼 OPERADOR";
                 loader.style.display = "none";
                 document.getElementById('mainBody').style.display = "block";

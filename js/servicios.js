@@ -18,8 +18,7 @@ export function cargarServicios() {
         render();
     });
 
-    setInterval(() => render(document.getElementById('searchBar').value.toLowerCase()), 5000);
-}
+    }
 
 export function render(filtro = "") {
     const lista = document.getElementById('lista');
@@ -43,6 +42,7 @@ export function render(filtro = "") {
 
         const fechaTxt = new Date(s.fecha).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
         const minRest = Math.floor((s.fecha - ahora) / 60000);
+        const taxiDisabled = s.estado !== 'pendiente' || (s.unidad && s.unidad !== 'S/A');
 
         div.className = `servicio-card ${s.estado} ${esUrgente ? 'urgente-blink' : ''}`;
         div.innerHTML = `
@@ -53,7 +53,14 @@ export function render(filtro = "") {
             <div>📍 ${s.domicilio || ""}</div>
             <div>🚕 Unidad: <b>${s.unidad || "S/A"}</b></div>
             <div class="acciones">
-                <button class="btn-acc bg-ws" data-id="${s.id}" data-tel="${s.telefono || ""}">TAXI</button>
+                <button 
+    class="btn-acc bg-ws" 
+    data-id="${s.id}" 
+    data-tel="${s.telefono || ""}"
+    ${taxiDisabled ? 'disabled style="opacity:0.5;pointer-events:none;"' : ''}
+>
+    TAXI
+</button>
                 <button class="btn-acc bg-map" data-dom="${s.domicilio || ""}">MAPA</button>
                 <button class="btn-acc bg-edit" data-id="${s.id}">EDIT</button>
                 <button class="btn-acc bg-fin" data-id="${s.id}">FIN</button>

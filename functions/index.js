@@ -150,14 +150,14 @@ exports.asignarRolOperador = onCall(async (request) => {
 
 const db = admin.firestore();
 
-exports.recurrenciaServicios = onSchedule("every 5 minutes", async () => {
+exports.Servicios = onSchedule("every 5 minutes", async () => {
     console.log("🔁 Revisando servicios recurrentes...");
 
     const db = admin.firestore();
     const ahora = new Date();
 
     const snapshot = await db.collection("servicios")
-        .where("recurrencia", "==", "diario")
+        .where("", "==", "diario")
         .get();
 
     for (const docu of snapshot.docs) {
