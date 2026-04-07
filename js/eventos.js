@@ -58,13 +58,22 @@ export function initEventos() {
             ? Array.from(document.querySelectorAll('#diasSemana input:checked')).map(c => parseInt(c.value))
             : [];
 
-        let fechaSeleccionada = new Date(fec);
-        const ahora = new Date();
+        // 🔥 Parseo correcto en horario LOCAL
+const [fechaParte, horaParte] = fec.split("T");
+const [year, month, day] = fechaParte.split("-").map(Number);
+const [hour, minute] = horaParte.split(":").map(Number);
 
-        // ✅ evitar crear en el pasado
-        if (tipoRec === 'diario' && fechaSeleccionada <= ahora) {
-            fechaSeleccionada.setDate(fechaSeleccionada.getDate() + 1);
-        }
+let fechaSeleccionada = new Date(year, month - 1, day, hour, minute);
+
+// 🧼 Normalizar segundos
+fechaSeleccionada.setSeconds(0, 0);
+
+const ahora = new Date();
+
+// ⛔ Evitar pasado (solo para recurrencia)
+if (tipoRec === 'diario' && fechaSeleccionada.getTime() <= ahora.getTime()) {
+    fechaSeleccionada.setDate(fechaSeleccionada.getDate() + 1);
+}
 
         const data = {
             nombre: nom,

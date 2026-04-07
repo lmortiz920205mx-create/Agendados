@@ -84,6 +84,40 @@ function manejarAlertas(hayUrgente) {
 }
 
 export async function guardarServicio(data, id) {
+
+    // 🧪 1. Validar que exista fecha
+    if (!data.fecha) {
+        console.error("❌ Fecha no definida");
+        return;
+    }
+
+    // 🧪 2. Validar que sea número válido
+    if (isNaN(data.fecha)) {
+        console.error("❌ Fecha inválida:", data.fecha);
+        return;
+    }
+
+    const ahora = Date.now();
+
+    // 🧪 3. Evitar guardar en el pasado (tolerancia 1 minuto)
+    if (data.fecha < ahora - 60000) {
+        console.warn("⚠️ Fecha en el pasado detectada:", new Date(data.fecha));
+
+        // 🔥 CORRECCIÓN AUTOMÁTICA
+        data.fecha = ahora + 60000; // lo manda 1 minuto al futuro
+    }
+
+    // 🧪 4. Normalizar segundos (evita bugs raros)
+    const fechaObj = new Date(data.fecha);
+    fechaObj.setSeconds(0, 0);
+    data.fecha = fechaObj.getTime();
+
+    // 🧪 5. Log para debug
+    console.log("✅ Guardando servicio:", {
+        nombre: data.nombre,
+        fecha: new Date(data.fecha)
+    });
+
     await setDoc(doc(db, "servicios", id), data, { merge: true });
 }
 
