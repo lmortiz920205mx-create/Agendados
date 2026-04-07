@@ -47,7 +47,10 @@ export function initEventos() {
     // Guardar servicio
     document.getElementById('btnGuardar').onclick = async () => {
         const nom = document.getElementById('nombre').value;
-        const fec = document.getElementById('fecha').value;
+const fec = document.getElementById('fecha').value;
+
+// 🔥 DEBUG AQUÍ
+console.log("VALOR INPUT CRUDO:", fec);
 
         if (!nom || !fec) return Swal.fire('Error', 'Datos incompletos', 'warning');
 
@@ -191,45 +194,55 @@ if (tipoRec === 'diario' && fechaSeleccionada.getTime() <= ahora.getTime()) {
         }
 
         // FINALIZAR
-        if (t.classList.contains('bg-fin')) {
+        // ✅ DENTRO DE eventos.js (Evento bg-fin)
+if (t.classList.contains('bg-fin')) {
+    const s = servicios.find(x => x.id === id);
+    await cambiarEstado(id, 'finalizado');
 
-            const s = servicios.find(x => x.id === id);
+    if (s.recurrencia === 'diario') {
+        let proximaInstancia;
 
-            await cambiarEstado(id, 'finalizado');
-
-            if (s.recurrencia === 'diario') {
-
-                let nuevaFecha;
-
-                if (s.dias && s.dias.length > 0) {
-                    nuevaFecha = obtenerSiguienteFechaValida(s.fecha, s.dias);
-                } else {
-                    nuevaFecha = new Date(s.fecha);
-                    nuevaFecha.setDate(nuevaFecha.getDate() + 1);
-                }
-
-                if (!nuevaFecha) return;
-
-                const yaExiste = servicios.some(x =>
-                    x.fecha === nuevaFecha.getTime() &&
-                    x.nombre === s.nombre &&
-                    x.domicilio === s.domicilio
-                );
-
-                if (yaExiste) return;
-
-                const nuevoServicio = {
-                    ...s,
-                    fecha: nuevaFecha.getTime(),
-                    estado: 'pendiente',
-                    unidad: 'S/A'
-                };
-
-                delete nuevoServicio.id;
-
-                await guardarServicio(nuevoServicio, crypto.randomUUID());
-            }
+        if (s.dias && s.dias.length > 0) {
+            proximaInstancia = obtenerSiguienteFechaValida(s.fecha, s.dias);
+        } else {
+            // Si es diario simple, sumamos 24 horas exactas al timestamp actual del servicio
+            const base = new Date(s.fecha);
+            base.setDate(base.getDate() + 1);
+            proximaInstancia = base;
         }
+
+        if (!proximaInstancia) return;
+
+        const nuevaFechaMs = proximaInstancia.getTime();
+        const ahoraMs = Date.now();
+
+        // 🛡️ FILTRO DE SEGURIDAD: Si la fecha calculada sigue siendo el pasado, 
+        // saltar a la siguiente válida (mañana) para evitar el error del 7 de abril.
+        if (nuevaFechaMs < ahoraMs) {
+            console.warn("Calculo resultó en pasado, ajustando...");
+            proximaInstancia.setDate(proximaInstancia.getDate() + 1);
+        }
+
+        // Evitar duplicados exactos
+        const yaExiste = servicios.some(x => 
+            Math.abs(x.fecha - proximaInstancia.getTime()) < 60000 && 
+            x.nombre === s.nombre && 
+            x.estado === 'pendiente'
+        );
+
+        if (yaExiste) return;
+
+        const nuevoServicio = {
+            ...s,
+            fecha: proximaInstancia.getTime(),
+            estado: 'pendiente',
+            unidad: 'S/A'
+        };
+        delete nuevoServicio.id;
+
+        await guardarServicio(nuevoServicio, crypto.randomUUID());
+    }
+}
 
         // ELIMINAR
         if (t.classList.contains('bg-del') && userRole === "admin") {
