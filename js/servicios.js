@@ -40,31 +40,37 @@ export function render(filtro = "") {
         const esUrgente = s.estado === 'pendiente' && s.fecha <= quinceMin && s.fecha >= ahora - 600000;
         if (esUrgente) hayUrgente = true;
 
-        const minRest = Math.floor((s.fecha - ahora) / 60000);
         const taxiDisabled = s.estado !== 'pendiente' || (s.unidad && s.unidad !== 'S/A');
+        const finDisabled = s.estado !== 'en-proceso';
+        const editDisabled = s.estado === 'finalizado';
 
         div.className = `servicio-card ${s.estado} ${esUrgente ? 'urgente-blink' : ''}`;
         
         div.innerHTML = `
-            <small style="${minRest <= 15 && minRest >= 0 && s.estado === 'pendiente' ? 'color:red;' : ''}">
-                ${minRest <= 15 && minRest >= 0 && s.estado === 'pendiente' ? `⏰ <b>${minRest} min</b> - ${fechaTxt}` : `📅 ${fechaTxt}`}
-            </small><br>
-            <b>${(s.nombre || "").toUpperCase()}</b><br>
-            <div>📍 ${s.domicilio || ""}</div>
-            <div>🚕 Unidad: <b>${s.unidad || "S/A"}</b></div>
-
-            <div class="logs" style="background: #f1f2f6; padding: 8px; border-radius: 8px; margin: 10px 0; font-size: 0.75rem; border-left: 4px solid #1a2b4c; color: #555;">
-                <div>📝 <b>Creado:</b> ${s.creadoPor || 'Sistema'}</div>
-                ${s.asignadoPor && s.unidad !== 'S/A' ? `<div>🚖 <b>Asignó:</b> ${s.asignadoPor}</div>` : ''}
-                ${s.finalizadoPor ? `<div>🏁 <b>Finalizó:</b> ${s.finalizadoPor}</div>` : ''}
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:start;">
+                <small style="font-weight:bold; color:#1a2b4c;">📅 ${fechaTxt}</small>
+                ${s.recurrencia === 'diario' ? '<span style="font-size:10px; background:#eee; padding:2px 5px; border-radius:4px;">🔁 RECURRENTE</span>' : ''}
+            </div>
+            
+            <div style="margin: 10px 0;">
+                <b style="font-size: 1.1rem; color: #1a2b4c;">${(s.nombre || "").toUpperCase()}</b><br>
+                <span style="color: #444; font-size: 0.95rem;">📍 ${s.domicilio || ""}</span><br>
+                <div style="margin-top:5px;">
+                    <span style="font-size: 0.9rem;">🚕 Unidad: <b style="background:#fbc02d; padding:2px 8px; border-radius:4px; color:black;">${s.unidad || "S/A"}</b></span>
+                </div>
             </div>
 
-            <div class="acciones">
-                <button class="btn-acc bg-ws" data-id="${s.id}" data-tel="${s.telefono || ""}" ${taxiDisabled ? 'disabled style="opacity:0.5;pointer-events:none;"' : ''}>TAXI</button>
+            <div class="logs" style="font-size: 0.65rem; color: #888; border-top: 1px solid #eee; padding-top: 6px; margin-top: 8px; display: flex; justify-content: space-between;">
+                <span>👤 Crea: ${s.creadoPor || 'Sist.'}</span>
+                <span>🚖 Asigna: ${s.asignadoPor || '---'}</span>
+            </div>
+
+            <div class="acciones" style="margin-top:12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;">
+                <button class="btn-acc bg-ws" data-id="${s.id}" ${taxiDisabled ? 'disabled style="opacity:0.4"' : ''}>TAXI</button>
                 <button class="btn-acc bg-map" data-dom="${s.domicilio || ""}">MAPA</button>
-                <button class="btn-acc bg-edit" data-id="${s.id}">EDIT</button>
-                <button class="btn-acc bg-fin" data-id="${s.id}">FIN</button>
-                <button class="btn-acc bg-del" data-id="${s.id}" style="${userRole === 'admin' ? '' : 'display:none'}">DEL</button>
+                <button class="btn-acc bg-edit" data-id="${s.id}" ${editDisabled ? 'disabled style="opacity:0.4"' : ''}>EDIT</button>
+                <button class="btn-acc bg-fin" data-id="${s.id}" ${finDisabled ? 'disabled style="opacity:0.4"' : ''}>FIN</button>
+                <button class="btn-acc bg-del" data-id="${s.id}" style="${userRole === 'admin' ? 'grid-column: span 4; margin-top:5px;' : 'display:none'}">ELIMINAR</button>
             </div>`;
 
         fragment.appendChild(div);
@@ -76,43 +82,27 @@ export function render(filtro = "") {
 }
 
 function formatearFechaPro(timestamp) {
-    const fecha = new Date(timestamp);
-    const ahora = new Date();
-    const hoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-    const manana = new Date(hoy);
-    manana.setDate(hoy.getDate() + 1);
-    const fechaBase = new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
-    const horaTxt = fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-    const diaTxt = fecha.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: '2-digit' });
-    if (fechaBase.getTime() === hoy.getTime()) return `🚀 HOY ${horaTxt}`;
-    if (fechaBase.getTime() === manana.getTime()) return `🟡 MAÑANA ${horaTxt}`;
-    return `📅 ${diaTxt.toUpperCase()} ${horaTxt}`;
+    const f = new Date(timestamp);
+    return f.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: '2-digit' }).toUpperCase() + " " + f.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 }
 
 function manejarAlertas(hayUrgente) {
     const btnSonido = document.getElementById('btnSonido');
-    audioHabilitado = btnSonido.innerText === "🔊";
+    audioHabilitado = btnSonido?.innerText === "🔊";
     if (hayUrgente && audioHabilitado) {
         if (!sonidoActivo) { audio.play().catch(()=>{}); sonidoActivo = true; }
-    } else { audio.pause(); sonidoActivo = false; }
+    } else { audio?.pause(); sonidoActivo = false; }
 }
 
 export async function guardarServicio(data, id) {
-    const ahoraMs = Date.now();
-    if (!data.fecha || isNaN(data.fecha)) return;
-    
-    // Validar futuro (tolerancia 1 min)
-    if (data.fecha < (ahoraMs - 60000)) return; 
-
     const d = new Date(data.fecha);
-    d.setSeconds(0, 0);
-    d.setMilliseconds(0);
+    d.setSeconds(0, 0); d.setMilliseconds(0);
     data.fecha = d.getTime();
 
     const servicioFinal = {
         ...data,
         creadoPor: data.creadoPor || userName || "Sistema",
-        fechaRegistro: ahoraMs
+        fechaRegistro: Date.now()
     };
     await setDoc(doc(db, "servicios", id), servicioFinal, { merge: true });
 }
