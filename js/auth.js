@@ -3,11 +3,13 @@ import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https:/
 import { activarNotificaciones } from "./notificaciones.js";
 
 export let userRole = null;
+export let userName = null;
 
 export function initAuth(onLogin, onLogout) {
     onAuthStateChanged(auth, async user => {
         const loader = document.getElementById('loader');
         if (user) {
+            userName = user.email; // O user.displayName si lo tienes configurado
             document.getElementById('loader').style.display = "none";
 document.getElementById('app-content').classList.remove('hidden');
             try {
