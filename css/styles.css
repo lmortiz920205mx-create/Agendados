@@ -725,6 +725,10 @@ input:user-invalid {
     text-align: left;
 }
 
+.swal2-container {
+    z-index: 12000 !important;
+}
+
 .swal-login label {
     display: grid;
     gap: 6px;
