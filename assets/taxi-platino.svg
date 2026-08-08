@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Taxi Platino</title>
+  <desc id="desc">Emblema azul y dorado de Taxi Platino</desc>
+  <rect width="512" height="512" rx="112" fill="#10213f"/>
+  <path d="M96 338V222c0-22 13-43 34-52l54-24 34-54h76l34 54 54 24c21 9 34 30 34 52v116h-44v44h-70v-44H210v44h-70v-44H96Z" fill="#f7c948"/>
+  <path d="M184 146h144l-24-38h-96l-24 38Z" fill="#eef2f7"/>
+  <path d="m156 210 52-22h96l52 22 18 58H138l18-58Z" fill="#eef2f7"/>
+  <circle cx="176" cy="300" r="26" fill="#10213f"/>
+  <circle cx="336" cy="300" r="26" fill="#10213f"/>
+  <path d="M212 226h88v36h-88z" fill="#10213f" opacity=".16"/>
+  <text x="256" y="255" text-anchor="middle" font-family="Arial, sans-serif" font-size="40" font-weight="800" fill="#10213f">TP</text>
+</svg>
