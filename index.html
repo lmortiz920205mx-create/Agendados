@@ -166,6 +166,32 @@
 
     <audio id="audioAlerta" src="./alerta.mp3" preload="auto"></audio>
     <noscript>Esta aplicación necesita JavaScript para funcionar.</noscript>
-    <script type="module" src="./js/main.js"></script>
+    <script>
+        window.showStartupError = function () {
+            var loader = document.getElementById("loader");
+            if (!loader || loader.classList.contains("hidden")) return;
+
+            var box = document.createElement("div");
+            box.className = "loader-box";
+
+            var title = document.createElement("strong");
+            title.textContent = "NO FUE POSIBLE INICIAR";
+
+            var message = document.createElement("span");
+            message.textContent = "Comprueba tu conexión y vuelve a intentarlo.";
+
+            var retry = document.createElement("button");
+            retry.type = "button";
+            retry.className = "button button-admin";
+            retry.textContent = "Reintentar";
+            retry.addEventListener("click", function () { window.location.reload(); });
+
+            box.append(title, message, retry);
+            loader.replaceChildren(box);
+        };
+
+        window.__taxiBootTimeout = window.setTimeout(window.showStartupError, 12000);
+    </script>
+    <script type="module" src="./js/main.js" onerror="window.showStartupError()"></script>
 </body>
 </html>
