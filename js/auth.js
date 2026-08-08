@@ -58,6 +58,7 @@ export function initAuth(onLogin, onLogout) {
             userRole = null;
             userName = null;
             ocultarAplicacion();
+            document.getElementById("loader").classList.add("hidden");
             onLogout?.();
             await loginManual();
             return;
