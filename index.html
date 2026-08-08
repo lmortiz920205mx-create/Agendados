@@ -1,89 +1,171 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es-MX">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Taxi Platino Admin</title>
-    <link rel="manifest" href="manifest.json">
-    <link rel="icon" href="favicon.ico">
-    <link rel="stylesheet" href="css/styles.css">
-    <meta name="theme-color" content="#1a2b4c">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Agenda y operación de servicios de Taxi Platino en Minatitlán.">
+    <meta name="theme-color" content="#10213f">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Agendados | Taxi Platino</title>
+
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" href="./assets/taxi-platino.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="./assets/taxi-platino.svg">
+    <link rel="stylesheet" href="./css/styles.css">
+
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
-<body id="mainBody">
-    <div id="loader">
+<body>
+    <a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+    <div id="loader" class="loader" role="status" aria-live="polite">
         <div class="loader-box">
-            <h2>TAXI PLATINO</h2>
-            <p>Cargando sistema...</p>
+            <img src="./assets/taxi-platino.svg" alt="" width="76" height="76">
+            <strong>TAXI PLATINO</strong>
+            <span>Preparando el sistema…</span>
         </div>
     </div>
 
-    <audio id="audioAlerta" src="alerta.mp3" preload="auto"></audio>
+    <div id="app-content" class="hidden">
+        <header class="app-header">
+            <button id="btnLogout" class="icon-button" type="button" aria-label="Cerrar sesión" title="Cerrar sesión">
+                <span aria-hidden="true">↪</span>
+            </button>
 
-    <div id="app-content">
-        <div class="header">
-            <button id="btnLogout" class="header-btn">🚪</button>
-            <h2 style="margin:0">TAXI PLATINO</h2>
-            <small>CENTRAL MINATITLÁN</small><br>
-            <small id="rolUser"></small>
-            <button id="btnSonido" class="header-btn">🔇</button>
-        </div>
-
-        <button id="btnRol" class="btn-main" style="background:#6c5ce7;">👑 REGISTRAR OPERADOR</button>
-
-        <div class="form-card" id="formulario">
-            <input type="hidden" id="edit-id">
-            <input type="text" id="nombre" placeholder="Nombre del Cliente">
-            <input type="tel" id="telefono" placeholder="📱 WhatsApp (10 dígitos)" maxlength="10">
-            <input type="text" id="domicilio" placeholder="📍 Domicilio de Origen">
-            <div style="display: flex; gap: 10px;">
-                <input type="datetime-local" id="fecha" style="flex: 2;">
-                <select id="recurrencia" style="flex: 1.5;">
-                    <option value="no">Servicio Único</option>
-                    <option value="diario">Repetir cada 24h</option>
-                </select>
-            </div>
-
-            <div id="bloqueRecurrencia" class="bloque-rec">
-                <div id="diasSemana" class="dias-container">
-                    <label class="dia"><input type="checkbox" value="1"><span>L</span></label>
-                    <label class="dia"><input type="checkbox" value="2"><span>M</span></label>
-                    <label class="dia"><input type="checkbox" value="3"><span>Mi</span></label>
-                    <label class="dia"><input type="checkbox" value="4"><span>J</span></label>
-                    <label class="dia"><input type="checkbox" value="5"><span>V</span></label>
-                    <label class="dia"><input type="checkbox" value="6"><span>S</span></label>
-                    <label class="dia"><input type="checkbox" value="0"><span>D</span></label>
+            <div class="brand">
+                <img src="./assets/taxi-platino.svg" alt="Emblema Taxi Platino" width="58" height="58">
+                <div>
+                    <p class="brand-name">TAXI PLATINO</p>
+                    <p class="brand-location">CENTRAL MINATITLÁN</p>
                 </div>
-                
-                <small id="resumenDias"></small>
             </div>
 
-            <div class="divider"></div>
-
-<button class="btn-main btn-save" id="btnGuardar">💾 GUARDAR Y NOTIFICAR</button>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <button class="btn-main btn-excel" id="btnExcel">📊 EXCEL</button>
-                <button class="btn-main btn-clear" id="btnLimpiar">🧹 LIMPIAR</button>
+            <div class="header-actions">
+                <button id="btnNotificaciones" class="icon-button" type="button" aria-label="Activar notificaciones" title="Activar notificaciones">
+                    <span aria-hidden="true">🔔</span>
+                </button>
+                <button id="btnSonido" class="icon-button" type="button" aria-label="Activar alerta sonora" title="Activar alerta sonora" aria-pressed="false">
+                    <span aria-hidden="true">🔇</span>
+                </button>
             </div>
-            <button id="btn-cancel" style="display:none; color:red; width:100%; margin-top:10px; border:none; background:none; font-weight:bold; cursor:pointer;">✖ CANCELAR EDICIÓN</button>
-        </div>
+        </header>
 
-        <input type="text" id="searchBar" placeholder="🔍 Buscar por nombre o domicilio...">
+        <main id="contenido" class="app-shell">
+            <section class="session-bar" aria-label="Sesión actual">
+                <div>
+                    <span id="connectionStatus" class="connection-status online">En línea</span>
+                    <p id="rolUser" class="role-label"></p>
+                </div>
+                <button id="btnRol" class="button button-admin" type="button" hidden>
+                    <span aria-hidden="true">＋</span> Registrar operador
+                </button>
+            </section>
 
-        <div id="tabs" style="display:flex; gap:5px; margin-bottom:15px;">
-            <button class="tab-btn active" data-tab="pendiente">🟡 Pendientes</button>
-            <button class="tab-btn" data-tab="en-proceso">🟢 En proceso</button>
-            <button class="tab-btn" data-tab="finalizado">⚫ Finalizados</button>
-        </div>
+            <section class="form-card" aria-labelledby="form-title">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">CONTROL DE SERVICIOS</p>
+                        <h1 id="form-title">Agendar traslado</h1>
+                    </div>
+                    <span class="section-icon" aria-hidden="true">🚕</span>
+                </div>
 
-    <div class="servicio-card">
-                <div id="lista"></div>
+                <form id="servicioForm" novalidate>
+                    <input type="hidden" id="edit-id">
+
+                    <div class="form-grid">
+                        <div class="field field-wide">
+                            <label for="nombre">Nombre del cliente <span aria-hidden="true">*</span></label>
+                            <input type="text" id="nombre" autocomplete="name" maxlength="80" required placeholder="Ej. María Hernández">
+                        </div>
+
+                        <div class="field">
+                            <label for="telefono">WhatsApp del cliente</label>
+                            <input type="tel" id="telefono" autocomplete="tel" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" placeholder="10 dígitos">
+                            <small>Opcional; se usa para avisar qué unidad va en camino.</small>
+                        </div>
+
+                        <div class="field">
+                            <label for="domicilio">Domicilio de origen <span aria-hidden="true">*</span></label>
+                            <input type="text" id="domicilio" maxlength="180" required placeholder="Calle, número y referencia">
+                        </div>
+
+                        <div class="field">
+                            <label for="fecha">Fecha y hora <span aria-hidden="true">*</span></label>
+                            <input type="datetime-local" id="fecha" required>
+                        </div>
+
+                        <div class="field">
+                            <label for="recurrencia">Frecuencia</label>
+                            <select id="recurrencia">
+                                <option value="no">Servicio único</option>
+                                <option value="diario">Servicio recurrente</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <fieldset id="bloqueRecurrencia" class="recurrence-panel" hidden>
+                        <legend>Días de repetición</legend>
+                        <div id="diasSemana" class="days-grid">
+                            <label class="day"><input type="checkbox" value="1"><span>Lun</span></label>
+                            <label class="day"><input type="checkbox" value="2"><span>Mar</span></label>
+                            <label class="day"><input type="checkbox" value="3"><span>Mié</span></label>
+                            <label class="day"><input type="checkbox" value="4"><span>Jue</span></label>
+                            <label class="day"><input type="checkbox" value="5"><span>Vie</span></label>
+                            <label class="day"><input type="checkbox" value="6"><span>Sáb</span></label>
+                            <label class="day"><input type="checkbox" value="0"><span>Dom</span></label>
+                        </div>
+                        <small id="resumenDias" class="recurrence-summary" aria-live="polite"></small>
+                    </fieldset>
+
+                    <div class="form-actions">
+                        <button class="button button-primary" id="btnGuardar" type="submit">
+                            <span aria-hidden="true">✓</span> Guardar y notificar
+                        </button>
+                        <button class="button button-secondary" id="btnExcel" type="button">
+                            <span aria-hidden="true">▦</span> Exportar Excel
+                        </button>
+                        <button class="button button-ghost" id="btnLimpiar" type="button">
+                            Limpiar formulario
+                        </button>
+                        <button class="button button-cancel" id="btn-cancel" type="button" hidden>
+                            Cancelar edición
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="services-section" aria-labelledby="services-title">
+                <div class="services-heading">
+                    <div>
+                        <p class="eyebrow">OPERACIÓN EN TIEMPO REAL</p>
+                        <h2 id="services-title">Servicios</h2>
+                    </div>
+                    <label class="search-box">
+                        <span aria-hidden="true">⌕</span>
+                        <span class="sr-only">Buscar servicios</span>
+                        <input type="search" id="searchBar" placeholder="Buscar cliente o domicilio">
+                    </label>
+                </div>
+
+                <div id="tabs" class="tabs" role="tablist" aria-label="Estado de los servicios">
+                    <button class="tab-button active" type="button" role="tab" aria-selected="true" data-tab="pendiente">Pendientes (0)</button>
+                    <button class="tab-button" type="button" role="tab" aria-selected="false" data-tab="en-proceso">En proceso (0)</button>
+                    <button class="tab-button" type="button" role="tab" aria-selected="false" data-tab="finalizado">Finalizados (0)</button>
+                </div>
+
+                <div id="lista" class="services-grid" role="tabpanel" aria-live="polite"></div>
+            </section>
+        </main>
+
+        <footer class="app-footer">Taxi Platino · Central Minatitlán</footer>
     </div>
 
-    <script type="module" src="js/main.js"></script>
+    <audio id="audioAlerta" src="./alerta.mp3" preload="auto"></audio>
+    <noscript>Esta aplicación necesita JavaScript para funcionar.</noscript>
+    <script type="module" src="./js/main.js"></script>
 </body>
 </html>
