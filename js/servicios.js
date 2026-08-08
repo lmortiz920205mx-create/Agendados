@@ -1,91 +1,214 @@
 import { db } from "./firebase.js";
-import { collection, query, orderBy, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import { userRole, userName } from "./auth.js";
-import { actualizarUI, elementosDOM, tabActual } from "./ui.js";
+import {
+    collection,
+    deleteDoc,
+    doc,
+    onSnapshot,
+    orderBy,
+    query,
+    setDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { userRole } from "./auth.js";
+import { actualizarUI, tabActual } from "./ui.js";
 
 export let servicios = [];
-let audio;
+
+let audio = null;
 let sonidoActivo = false;
+let unsubscribe = null;
 
-export function cargarServicios() {
-    audio = document.getElementById('audioAlerta');
-    const q = query(collection(db, "servicios"), orderBy("fecha", "asc"));
-
-    onSnapshot(q, snap => {
-        servicios = [];
-        snap.forEach(d => servicios.push({ ...d.data(), id: d.id }));
-        render();
-    });
+function createElement(tag, className, text) {
+    const element = document.createElement(tag);
+    if (className) element.className = className;
+    if (text !== undefined) element.textContent = text;
+    return element;
 }
 
-export function render(filtro = "") {
-    const lista = document.getElementById('lista');
-    lista.innerHTML = "";
-    const fragment = document.createDocumentFragment();
-    const ahora = Date.now();
-    const quinceMin = ahora + (15 * 60 * 1000);
-    let hayUrgente = false;
+function formatDate(timestamp) {
+    const date = new Date(timestamp);
+    return `${date.toLocaleDateString("es-MX", {
+        weekday: "short",
+        day: "2-digit",
+        month: "short"
+    }).toUpperCase()} · ${date.toLocaleTimeString("es-MX", {
+        hour: "2-digit",
+        minute: "2-digit"
+    })}`;
+}
 
-    const filtrados = servicios.filter(s => 
-        s.estado === tabActual && 
-        ((s.nombre || "").toLowerCase().includes(filtro) || (s.domicilio || "").toLowerCase().includes(filtro))
+function actionButton(label, className, options = {}) {
+    const button = createElement("button", `action-button ${className}`, label);
+    button.type = "button";
+    button.disabled = Boolean(options.disabled);
+    if (options.id) button.dataset.id = options.id;
+    if (options.address) button.dataset.address = options.address;
+    if (options.ariaLabel) button.setAttribute("aria-label", options.ariaLabel);
+    return button;
+}
+
+function createServiceCard(service, urgent) {
+    const card = createElement(
+        "article",
+        `service-card ${service.estado || "pendiente"}${urgent ? " urgent" : ""}`
+    );
+    card.dataset.serviceId = service.id;
+
+    const topLine = createElement("div", "service-topline");
+    topLine.append(createElement("span", "", `📅 ${formatDate(service.fecha)}`));
+    if (service.recurrencia === "diario") {
+        topLine.append(createElement("span", "recurring-badge", "↻ Recurrente"));
+    }
+
+    const name = createElement(
+        "h3",
+        "service-name",
+        String(service.nombre || "Cliente sin nombre").toUpperCase()
+    );
+    const address = createElement(
+        "p",
+        "service-address",
+        `📍 ${service.domicilio || "Domicilio no especificado"}`
+    );
+    const unit = createElement("p", "service-unit");
+    unit.append("🚕 Unidad: ");
+    unit.append(createElement("span", "unit-badge", service.unidad || "S/A"));
+
+    const audit = createElement("div", "service-audit");
+    audit.append(
+        createElement("span", "", `Crea: ${service.creadoPor || "Sistema"}`),
+        createElement("span", "", `Asigna: ${service.asignadoPor || "Sin asignar"}`)
     );
 
-    filtrados.forEach(s => {
-        const fechaFmt = new Date(s.fecha).toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: '2-digit' }).toUpperCase() + " " + new Date(s.fecha).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-        
-        let div = elementosDOM[s.id] || document.createElement('div');
-        elementosDOM[s.id] = div;
-        
-        const esUrgente = s.estado === 'pendiente' && s.fecha <= quinceMin && s.fecha >= ahora - 600000;
-        if (esUrgente) hayUrgente = true;
+    const actions = createElement("div", "service-actions");
+    actions.append(
+        actionButton("Asignar", "action-assign", {
+            id: service.id,
+            disabled: service.estado !== "pendiente",
+            ariaLabel: `Asignar unidad al servicio de ${service.nombre || "cliente"}`
+        }),
+        actionButton("Mapa", "action-map", {
+            address: service.domicilio || "",
+            ariaLabel: `Abrir mapa de ${service.domicilio || "la ubicación"}`
+        }),
+        actionButton("Editar", "action-edit", {
+            id: service.id,
+            disabled: service.estado === "finalizado",
+            ariaLabel: `Editar servicio de ${service.nombre || "cliente"}`
+        }),
+        actionButton("Finalizar", "action-finish", {
+            id: service.id,
+            disabled: service.estado !== "en-proceso",
+            ariaLabel: `Finalizar servicio de ${service.nombre || "cliente"}`
+        })
+    );
 
-        div.className = `servicio-card ${s.estado} ${esUrgente ? 'urgente-blink' : ''}`;
-        
-        div.innerHTML = `
-            <div style="display:flex; justify-content:space-between; font-size:0.7rem; font-weight:bold; color:#1a2b4c; margin-bottom:5px;">
-                <span>📅 ${fechaFmt}</span>
-                ${s.recurrencia === 'diario' ? '<span>🔁 RECURRENTE</span>' : ''}
-            </div>
-            
-            <b style="font-size: 1.1rem; color: #1a2b4c;">${(s.nombre || "").toUpperCase()}</b><br>
-            <div style="margin: 5px 0; color: #444;">📍 ${s.domicilio || ""}</div>
-            <div style="font-size: 0.9rem;">🚕 Unidad: <b style="background:#fbc02d; padding:2px 6px; border-radius:4px; color:black;">${s.unidad || "S/A"}</b></div>
+    if (userRole === "admin") {
+        actions.append(actionButton("Eliminar", "action-delete", {
+            id: service.id,
+            ariaLabel: `Eliminar servicio de ${service.nombre || "cliente"}`
+        }));
+    }
 
-            <div style="font-size: 0.65rem; color: #888; border-top: 1px solid #eee; padding-top: 5px; margin-top: 8px; display: flex; justify-content: space-between;">
-                <span>📝 Crea: ${s.creadoPor || 'Sist.'}</span>
-                <span>🚖 Asigna: ${s.asignadoPor || '---'}</span>
-            </div>
-
-            <div class="acciones" style="margin-top:10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;">
-                <button class="btn-acc bg-ws" data-id="${s.id}" ${s.estado !== 'pendiente' ? 'disabled style="opacity:0.4"' : ''}>TAXI</button>
-                <button class="btn-acc bg-map" data-dom="${s.domicilio || ""}">MAPA</button>
-                <button class="btn-acc bg-edit" data-id="${s.id}" ${s.estado === 'finalizado' ? 'disabled style="opacity:0.4"' : ''}>EDIT</button>
-                <button class="btn-acc bg-fin" data-id="${s.id}" ${s.estado !== 'en-proceso' ? 'disabled style="opacity:0.4"' : ''}>FIN</button>
-                <button class="btn-acc bg-del" data-id="${s.id}" style="${userRole === 'admin' ? 'grid-column: span 4;' : 'display:none'}">ELIMINAR</button>
-            </div>`;
-
-        fragment.appendChild(div);
-    });
-
-    lista.appendChild(fragment);
-    manejarAlertas(hayUrgente);
-    actualizarUI(servicios, hayUrgente);
+    card.append(topLine, name, address, unit, audit, actions);
+    return card;
 }
 
-function manejarAlertas(hayUrgente) {
-    const btnSonido = document.getElementById('btnSonido');
-    if (!btnSonido || !audio) return;
+function renderEmptyState(list, hasSearch) {
+    const empty = createElement("div", "empty-state");
+    empty.append(
+        createElement("span", "section-icon", hasSearch ? "⌕" : "🚕"),
+        createElement("strong", "", hasSearch ? "No encontramos coincidencias" : "No hay servicios en este estado"),
+        createElement("p", "", hasSearch ? "Prueba con otro nombre o domicilio." : "Los nuevos servicios aparecerán aquí.")
+    );
+    list.append(empty);
+}
 
-    const audioHabilitado = (btnSonido.innerText === "🔊");
+export function cargarServicios() {
+    if (unsubscribe) return;
 
-    if (hayUrgente && audioHabilitado) {
-        if (!sonidoActivo) {
-            audio.play().catch(e => console.warn("Audio bloqueado por navegador"));
-            sonidoActivo = true;
-            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    audio = document.getElementById("audioAlerta");
+    const servicesQuery = query(collection(db, "servicios"), orderBy("fecha", "asc"));
+
+    unsubscribe = onSnapshot(
+        servicesQuery,
+        (snapshot) => {
+            servicios = snapshot.docs.map((snapshotDoc) => ({
+                ...snapshotDoc.data(),
+                id: snapshotDoc.id
+            }));
+            render(document.getElementById("searchBar")?.value.trim().toLowerCase() || "");
+        },
+        (error) => {
+            console.error("No se pudieron cargar los servicios:", error);
+            const list = document.getElementById("lista");
+            list.replaceChildren();
+            const state = createElement("div", "empty-state");
+            state.append(
+                createElement("strong", "", "No fue posible cargar los servicios"),
+                createElement("p", "", "Comprueba tu conexión y los permisos de Firebase.")
+            );
+            list.append(state);
         }
-    } else {
+    );
+}
+
+export function detenerServicios() {
+    unsubscribe?.();
+    unsubscribe = null;
+    servicios = [];
+    sonidoActivo = false;
+    if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+    }
+}
+
+export function render(search = "") {
+    const list = document.getElementById("lista");
+    if (!list) return;
+
+    const normalizedSearch = String(search).trim().toLowerCase();
+    const now = Date.now();
+    const fifteenMinutes = now + 15 * 60 * 1000;
+    let hasUrgent = false;
+
+    const filtered = servicios.filter((service) => {
+        const matchesStatus = service.estado === tabActual;
+        const matchesSearch = !normalizedSearch ||
+            String(service.nombre || "").toLowerCase().includes(normalizedSearch) ||
+            String(service.domicilio || "").toLowerCase().includes(normalizedSearch);
+        return matchesStatus && matchesSearch;
+    });
+
+    const fragment = document.createDocumentFragment();
+    filtered.forEach((service) => {
+        const urgent = service.estado === "pendiente" &&
+            Number(service.fecha) <= fifteenMinutes &&
+            Number(service.fecha) >= now - 10 * 60 * 1000;
+        if (urgent) hasUrgent = true;
+        fragment.append(createServiceCard(service, urgent));
+    });
+
+    list.replaceChildren(fragment);
+    if (!filtered.length) renderEmptyState(list, Boolean(normalizedSearch));
+
+    manageAudioAlert(hasUrgent);
+    actualizarUI(servicios, hasUrgent);
+}
+
+function manageAudioAlert(hasUrgent) {
+    const soundButton = document.getElementById("btnSonido");
+    if (!soundButton || !audio) return;
+
+    const enabled = soundButton.getAttribute("aria-pressed") === "true";
+    if (hasUrgent && enabled && !sonidoActivo) {
+        audio.play().catch(() => console.warn("El navegador bloqueó la alerta sonora."));
+        sonidoActivo = true;
+        navigator.vibrate?.([200, 100, 200]);
+        return;
+    }
+
+    if (!hasUrgent || !enabled) {
         audio.pause();
         audio.currentTime = 0;
         sonidoActivo = false;
@@ -93,12 +216,17 @@ function manejarAlertas(hayUrgente) {
 }
 
 export async function guardarServicio(data, id) {
-    const d = new Date(data.fecha);
-    d.setSeconds(0, 0); d.setMilliseconds(0);
-    data.fecha = d.getTime();
+    const date = new Date(data.fecha);
+    date.setSeconds(0, 0);
+    const now = Date.now();
+    const finalData = {
+        ...data,
+        fecha: date.getTime(),
+        fechaActualizacion: now
+    };
 
-    const final = { ...data, fechaRegistro: Date.now() };
-    await setDoc(doc(db, "servicios", id), final, { merge: true });
+    if (!finalData.fechaRegistro) finalData.fechaRegistro = now;
+    await setDoc(doc(db, "servicios", id), finalData, { merge: true });
 }
 
 export async function eliminarServicio(id) {

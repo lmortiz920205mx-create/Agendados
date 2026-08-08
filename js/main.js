@@ -1,20 +1,44 @@
 import { initAuth } from "./auth.js";
-import { cargarServicios } from "./servicios.js";
-import { initTabs } from "./ui.js";
+import { cargarServicios, detenerServicios } from "./servicios.js";
+import { initTabs, setConnectionStatus } from "./ui.js";
 import { initEventos } from "./eventos.js";
 
-window.onerror = (m) => console.error("ERROR GLOBAL:", m);
+window.addEventListener("error", (event) => {
+    console.error("Error global:", event.error || event.message);
+});
 
-// Orquestación de inicio
-initAuth(
-    () => { // Al loguear
-        initTabs();
-        initEventos();
-        cargarServicios();
-    }
-);
+window.addEventListener("unhandledrejection", (event) => {
+    console.error("Promesa rechazada:", event.reason);
+});
 
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('../firebase-messaging-sw.js')
-        .then(() => console.log("SW registrado"));
+function iniciarAplicacion() {
+    initTabs();
+    initEventos();
+    cargarServicios();
+}
+
+function cerrarAplicacion() {
+    detenerServicios();
+    const list = document.getElementById("lista");
+    if (list) list.replaceChildren();
+}
+
+initAuth(iniciarAplicacion, cerrarAplicacion);
+
+setConnectionStatus(navigator.onLine);
+window.addEventListener("online", () => setConnectionStatus(true));
+window.addEventListener("offline", () => setConnectionStatus(false));
+
+if ("serviceWorker" in navigator) {
+    window.addEventListener("load", async () => {
+        try {
+            const registration = await navigator.serviceWorker.register(
+                "./firebase-messaging-sw.js",
+                { scope: "./" }
+            );
+            console.info("Service worker activo:", registration.scope);
+        } catch (error) {
+            console.error("No se pudo registrar la PWA:", error);
+        }
+    });
 }

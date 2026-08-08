@@ -1,40 +1,55 @@
 import { render } from "./servicios.js";
 
 export let tabActual = "pendiente";
-export let elementosDOM = {};
+export const elementosDOM = {};
+let tabsReady = false;
 
 export function initTabs() {
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.onclick = () => {
-            tabActual = btn.dataset.tab;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            render(document.getElementById('searchBar').value.toLowerCase());
-        };
+    if (tabsReady) return;
+
+    document.querySelectorAll(".tab-button").forEach((button) => {
+        button.addEventListener("click", () => {
+            tabActual = button.dataset.tab;
+            document.querySelectorAll(".tab-button").forEach((candidate) => {
+                const selected = candidate === button;
+                candidate.classList.toggle("active", selected);
+                candidate.setAttribute("aria-selected", String(selected));
+            });
+            render(document.getElementById("searchBar").value.trim().toLowerCase());
+        });
     });
+
+    tabsReady = true;
 }
 
 export function actualizarUI(servicios, hayUrgente) {
-    const p = servicios.filter(s => s.estado === "pendiente").length;
-    const pr = servicios.filter(s => s.estado === "en-proceso").length;
-    const f = servicios.filter(s => s.estado === "finalizado").length;
+    const counts = {
+        pendiente: servicios.filter((service) => service.estado === "pendiente").length,
+        "en-proceso": servicios.filter((service) => service.estado === "en-proceso").length,
+        finalizado: servicios.filter((service) => service.estado === "finalizado").length
+    };
 
-    const tabPend = document.querySelector('[data-tab="pendiente"]');
-    tabPend.innerText = `🟡 Pendientes (${p})`;
-    document.querySelector('[data-tab="en-proceso"]').innerText = `🟢 En proceso (${pr})`;
-    document.querySelector('[data-tab="finalizado"]').innerText = `⚫ Finalizados (${f})`;
+    const labels = {
+        pendiente: "Pendientes",
+        "en-proceso": "En proceso",
+        finalizado: "Finalizados"
+    };
 
-    if (hayUrgente) {
-        tabPend.style.background = "#ff0000";
-        tabPend.style.color = "white";
-        if (tabActual !== 'pendiente') {
-            tabActual = 'pendiente';
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            tabPend.classList.add('active');
-            render();
-        }
-    } else {
-        tabPend.style.background = "";
-        tabPend.style.color = "";
-    }
+    document.querySelectorAll(".tab-button").forEach((button) => {
+        const status = button.dataset.tab;
+        button.textContent = `${labels[status]} (${counts[status] || 0})`;
+    });
+
+    document
+        .querySelector('[data-tab="pendiente"]')
+        ?.classList.toggle("has-urgent", hayUrgente);
+}
+
+export function setConnectionStatus(online) {
+    const status = document.getElementById("connectionStatus");
+    if (!status) return;
+
+    status.textContent = online ? "En línea" : "Sin conexión";
+    status.classList.toggle("online", online);
+    status.classList.toggle("offline", !online);
 }
