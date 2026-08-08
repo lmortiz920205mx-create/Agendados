@@ -11,13 +11,14 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
-const CACHE_NAME = "taxi-platino-agendados-v4";
+const CACHE_NAME = "taxi-platino-agendados-v5";
 const APP_SHELL = [
     "./",
     "./index.html",
     "./manifest.json",
     "./css/styles.css",
     "./assets/taxi-platino.svg",
+    "./alerta.mp3",
     "./js/main.js",
     "./js/auth.js",
     "./js/firebase.js",
@@ -113,6 +114,9 @@ self.addEventListener("fetch", (event) => {
                 }
                 return response;
             } catch (error) {
+                if (request.destination === "audio") {
+                    return new Response(null, { status: 204 });
+                }
                 return new Response("Recurso temporalmente no disponible", {
                     status: 503,
                     statusText: "Offline",
