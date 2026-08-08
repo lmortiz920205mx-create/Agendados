@@ -1,20 +1,21 @@
 {
-  "name": "Taxi Platino",
-  "short_name": "AGENDADOS",
-  "start_url": ".",
+  "id": "./",
+  "name": "Agendados · Taxi Platino",
+  "short_name": "Agendados",
+  "description": "Agenda y control operativo de servicios de Taxi Platino.",
+  "lang": "es-MX",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#1a2b4c",
-  "theme_color": "#1a2b4c",
+  "orientation": "portrait-primary",
+  "background_color": "#eef2f7",
+  "theme_color": "#10213f",
   "icons": [
-  {
-    "src": "iconO-192.png",
-    "sizes": "192x192",
-    "type": "image/png"
-  },
-  {
-    "src": "iconO-512.png",
-    "sizes": "512x512",
-    "type": "image/png"
-  }
-]
+    {
+      "src": "./assets/taxi-platino.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }
