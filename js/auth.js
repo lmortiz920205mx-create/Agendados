@@ -51,6 +51,7 @@ function ocultarAplicacion() {
 
 export function initAuth(onLogin, onLogout) {
     onAuthStateChanged(auth, async (user) => {
+        window.clearTimeout(window.__taxiBootTimeout);
         currentUser = user || null;
 
         if (!user) {

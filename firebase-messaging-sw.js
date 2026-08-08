@@ -11,7 +11,7 @@ firebase.initializeApp({
 });
 
 const messaging = firebase.messaging();
-const CACHE_NAME = "taxi-platino-agendados-v3";
+const CACHE_NAME = "taxi-platino-agendados-v4";
 const APP_SHELL = [
     "./",
     "./index.html",
@@ -30,9 +30,18 @@ const APP_SHELL = [
 
 self.addEventListener("install", (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => cache.addAll(APP_SHELL))
-            .then(() => self.skipWaiting())
+        (async () => {
+            const cache = await caches.open(CACHE_NAME);
+            await Promise.all(APP_SHELL.map(async (path) => {
+                try {
+                    const response = await fetch(new Request(path, { cache: "reload" }));
+                    if (response.ok) await cache.put(path, response);
+                } catch (error) {
+                    console.warn("No se pudo precargar:", path, error);
+                }
+            }));
+            await self.skipWaiting();
+        })()
     );
 });
 
@@ -55,28 +64,62 @@ self.addEventListener("fetch", (event) => {
 
     if (request.mode === "navigate") {
         event.respondWith(
-            fetch(request)
-                .then((response) => {
+            (async () => {
+                try {
+                    const response = await fetch(request);
                     const copy = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put("./index.html", copy));
+                    const cache = await caches.open(CACHE_NAME);
+                    await cache.put("./index.html", copy);
                     return response;
-                })
-                .catch(() => caches.match("./index.html"))
+                } catch (error) {
+                    const cached = await caches.match("./index.html", { ignoreSearch: true }) ||
+                        await caches.match("./", { ignoreSearch: true });
+                    if (cached) return cached;
+
+                    return new Response(`<!DOCTYPE html>
+                        <html lang="es-MX"><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+                        <title>Taxi Platino sin conexión</title>
+                        <body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#08152b;color:white;font-family:Arial,sans-serif;text-align:center;padding:24px;box-sizing:border-box">
+                        <main><h1>Taxi Platino</h1><p>No hay conexión y la aplicación todavía no está almacenada.</p><button onclick="location.reload()" style="padding:12px 18px;border:0;border-radius:10px;font-weight:bold">Reintentar</button></main></body></html>`, {
+                        status: 200,
+                        headers: { "Content-Type": "text/html; charset=utf-8" }
+                    });
+                }
+            })()
         );
         return;
     }
 
     event.respondWith(
-        caches.match(request).then((cached) => {
-            const network = fetch(request).then((response) => {
+        (async () => {
+            const cached = await caches.match(request, { ignoreSearch: true });
+            if (cached) {
+                fetch(request)
+                    .then(async (response) => {
+                        if (response.ok) {
+                            const cache = await caches.open(CACHE_NAME);
+                            await cache.put(request, response.clone());
+                        }
+                    })
+                    .catch(() => {});
+                return cached;
+            }
+
+            try {
+                const response = await fetch(request);
                 if (response.ok) {
-                    const copy = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+                    const cache = await caches.open(CACHE_NAME);
+                    await cache.put(request, response.clone());
                 }
                 return response;
-            });
-            return cached || network;
-        })
+            } catch (error) {
+                return new Response("Recurso temporalmente no disponible", {
+                    status: 503,
+                    statusText: "Offline",
+                    headers: { "Content-Type": "text/plain; charset=utf-8" }
+                });
+            }
+        })()
     );
 });
 
